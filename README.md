@@ -36,6 +36,21 @@ Grab the APK matching your device from **[GitHub Releases](https://github.com/an
 
 ---
 
+## 📸 Sneak Peek
+
+<p align="center">
+  <img src="./.github/assets/screenshots/library.jpg" alt="Library" title="Library" width="160" />
+  <img src="./.github/assets/screenshots/anilist-seasonal.jpg" alt="AniList Seasonal" title="AniList Seasonal" width="160" />
+  <img src="./.github/assets/screenshots/anime-details.jpg" alt="Anime Details & Episodes" title="Anime Details & Episodes" width="160" />
+  <img src="./.github/assets/screenshots/anilist-details.jpg" alt="AniList Entry & Details" title="AniList Entry & Details" width="160" />
+  <img src="./.github/assets/screenshots/anilist-characters-themes.jpg" alt="Characters, Relations & Theme Songs" title="Characters, Relations & Theme Songs" width="160" />
+</p>
+<p align="center">
+  <sub>Library · AniList Seasonal · Anime Details · AniList Tracking · Characters &amp; Themes</sub>
+</p>
+
+---
+
 ## ✨ Features
 
 ### 🌟 Native AniList Experience
