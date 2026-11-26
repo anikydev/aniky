@@ -1,18 +1,27 @@
 package eu.kanade.presentation.updates
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.FlipToBack
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,11 +29,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastAll
 import androidx.compose.ui.util.fastAny
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
+import eu.kanade.presentation.components.AppBarTitle
+import eu.kanade.presentation.components.SearchToolbar
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.MangaBottomActionMenu
 import eu.kanade.tachiyomi.data.download.model.Download
@@ -34,13 +48,16 @@ import eu.kanade.tachiyomi.ui.updates.UpdatesScreenModel
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import tachiyomi.core.common.preference.TriState
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.ank.AMR
 import tachiyomi.presentation.core.components.FastScrollLazyColumn
 import tachiyomi.presentation.core.components.material.PullRefresh
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
+import tachiyomi.presentation.core.screens.EmptyScreenAction
 import tachiyomi.presentation.core.screens.LoadingScreen
 import tachiyomi.presentation.core.theme.active
 import uy.kohesive.injekt.Injekt
@@ -78,6 +95,14 @@ fun UpdateScreen(
     usePanoramaCover: Boolean,
     collapseToggle: (key: String) -> Unit,
     // KMK <--
+    // ANK -->
+    searchQuery: String? = null,
+    onChangeSearchQuery: (String?) -> Unit = {},
+    onClearQuickFilters: () -> Unit = {},
+    onToggleQuickUnread: () -> Unit = {},
+    onToggleQuickDownloaded: () -> Unit = {},
+    onToggleQuickBookmarked: () -> Unit = {},
+    // ANK <--
 ) {
     BackHandler(enabled = state.selectionMode, onBack = { onSelectAll(false) })
 
@@ -93,6 +118,10 @@ fun UpdateScreen(
                 onInvertSelection = { onInvertSelection() },
                 onCancelActionMode = { onSelectAll(false) },
                 scrollBehavior = scrollBehavior,
+                // ANK -->
+                searchQuery = searchQuery,
+                onChangeSearchQuery = onChangeSearchQuery,
+                // ANK <--
             )
         },
         bottomBar = {
@@ -112,55 +141,186 @@ fun UpdateScreen(
     ) { contentPadding ->
         when {
             state.isLoading -> LoadingScreen(Modifier.padding(contentPadding))
-            state.items.isEmpty() -> EmptyScreen(
-                stringRes = MR.strings.information_no_recent,
-                modifier = Modifier.padding(contentPadding),
-            )
             else -> {
-                val scope = rememberCoroutineScope()
-                var isRefreshing by remember { mutableStateOf(false) }
-
-                PullRefresh(
-                    refreshing = isRefreshing,
-                    onRefresh = {
-                        val started = onUpdateLibrary()
-                        if (!started) return@PullRefresh
-                        scope.launch {
-                            // Fake refresh status but hide it after a second as it's a long running task
-                            isRefreshing = true
-                            delay(1.seconds)
-                            isRefreshing = false
-                        }
-                    },
-                    enabled = !state.selectionMode,
-                    indicatorPadding = contentPadding,
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = contentPadding.calculateTopPadding()),
                 ) {
-                    FastScrollLazyColumn(
-                        contentPadding = contentPadding,
-                    ) {
-                        updatesLastUpdatedItem(lastUpdated)
+                    UpdatesQuickFilterBar(
+                        hasActiveFilters = hasActiveFilters,
+                        unreadSelected = state.filterUnread == TriState.ENABLED_IS,
+                        downloadedSelected = state.filterDownloaded == TriState.ENABLED_IS,
+                        bookmarkedSelected = state.filterBookmarked == TriState.ENABLED_IS,
+                        onSelectAll = onClearQuickFilters,
+                        onToggleUnread = onToggleQuickUnread,
+                        onToggleDownloaded = onToggleQuickDownloaded,
+                        onToggleBookmarked = onToggleQuickBookmarked,
+                    )
 
-                        updatesUiItems(
-                            uiModels = state.getUiModel(),
-                            // KMK -->
-                            expandedState = state.expandedState,
-                            collapseToggle = collapseToggle,
-                            usePanoramaCover = usePanoramaCover,
-                            // KMK <--
-                            selectionMode = state.selectionMode,
-                            onUpdateSelected = onUpdateSelected,
-                            onClickCover = onClickCover,
-                            onClickUpdate = onOpenChapter,
-                            onDownloadChapter = onDownloadChapter,
-                            // KMK -->
-                            updateSwipeStartAction = updateSwipeStartAction,
-                            updateSwipeEndAction = updateSwipeEndAction,
-                            onUpdateSwipe = onUpdateSwipe,
-                            // KMK <--
+                    val uiModels = remember(state.items, state.searchQuery) { state.getUiModel() }
+
+                    if (state.items.isEmpty()) {
+                        EmptyScreen(
+                            stringRes = MR.strings.information_no_recent,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = contentPadding.calculateBottomPadding()),
+                            actions = buildList {
+                                add(
+                                    EmptyScreenAction(
+                                        stringRes = MR.strings.action_update_library,
+                                        icon = Icons.Outlined.Refresh,
+                                        onClick = { onUpdateLibrary() },
+                                    ),
+                                )
+                                if (hasActiveFilters) {
+                                    add(
+                                        EmptyScreenAction(
+                                            stringRes = AMR.strings.updates_reset_filters,
+                                            icon = Icons.Outlined.FilterList,
+                                            onClick = onClearQuickFilters,
+                                        ),
+                                    )
+                                }
+                            }.let { persistentListOf(*it.toTypedArray()) },
                         )
+                    } else if (uiModels.isEmpty()) {
+                        EmptyScreen(
+                            stringRes = AMR.strings.updates_search_empty,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = contentPadding.calculateBottomPadding()),
+                        )
+                    } else {
+                        val scope = rememberCoroutineScope()
+                        var isRefreshing by remember { mutableStateOf(false) }
+                        val listPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding())
+
+                        PullRefresh(
+                            refreshing = isRefreshing,
+                            onRefresh = {
+                                val started = onUpdateLibrary()
+                                if (!started) return@PullRefresh
+                                scope.launch {
+                                    // Fake refresh status but hide it after a second as it's a long running task
+                                    isRefreshing = true
+                                    delay(1.seconds)
+                                    isRefreshing = false
+                                }
+                            },
+                            enabled = !state.selectionMode,
+                            indicatorPadding = listPadding,
+                        ) {
+                            FastScrollLazyColumn(
+                                contentPadding = listPadding,
+                            ) {
+                                updatesLastUpdatedItem(lastUpdated)
+
+                                updatesUiItems(
+                                    uiModels = uiModels,
+                                    // KMK -->
+                                    expandedState = state.expandedState,
+                                    collapseToggle = collapseToggle,
+                                    usePanoramaCover = usePanoramaCover,
+                                    // KMK <--
+                                    selectionMode = state.selectionMode,
+                                    onUpdateSelected = onUpdateSelected,
+                                    onClickCover = onClickCover,
+                                    onClickUpdate = onOpenChapter,
+                                    onDownloadChapter = onDownloadChapter,
+                                    // KMK -->
+                                    updateSwipeStartAction = updateSwipeStartAction,
+                                    updateSwipeEndAction = updateSwipeEndAction,
+                                    onUpdateSwipe = onUpdateSwipe,
+                                    // KMK <--
+                                )
+                            }
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun UpdatesQuickFilterBar(
+    hasActiveFilters: Boolean,
+    unreadSelected: Boolean,
+    downloadedSelected: Boolean,
+    bookmarkedSelected: Boolean,
+    onSelectAll: () -> Unit,
+    onToggleUnread: () -> Unit,
+    onToggleDownloaded: () -> Unit,
+    onToggleBookmarked: () -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val allSelected = !hasActiveFilters
+        item(key = "filter_all") {
+            FilterChip(
+                selected = allSelected,
+                onClick = onSelectAll,
+                label = {
+                    Text(
+                        text = stringResource(AMR.strings.updates_filter_all),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (allSelected) FontWeight.Bold else FontWeight.Medium,
+                    )
+                },
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.height(32.dp),
+            )
+        }
+        item(key = "filter_unread") {
+            FilterChip(
+                selected = unreadSelected,
+                onClick = onToggleUnread,
+                label = {
+                    Text(
+                        text = stringResource(AMR.strings.updates_filter_unwatched),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (unreadSelected) FontWeight.Bold else FontWeight.Medium,
+                    )
+                },
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.height(32.dp),
+            )
+        }
+        item(key = "filter_downloaded") {
+            FilterChip(
+                selected = downloadedSelected,
+                onClick = onToggleDownloaded,
+                label = {
+                    Text(
+                        text = stringResource(AMR.strings.updates_filter_downloaded),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (downloadedSelected) FontWeight.Bold else FontWeight.Medium,
+                    )
+                },
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.height(32.dp),
+            )
+        }
+        item(key = "filter_bookmarked") {
+            FilterChip(
+                selected = bookmarkedSelected,
+                onClick = onToggleBookmarked,
+                label = {
+                    Text(
+                        text = stringResource(AMR.strings.updates_filter_bookmarked),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (bookmarkedSelected) FontWeight.Bold else FontWeight.Medium,
+                    )
+                },
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.height(32.dp),
+            )
         }
     }
 }
@@ -177,8 +337,46 @@ private fun UpdatesAppBar(
     onInvertSelection: () -> Unit,
     onCancelActionMode: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior,
+    // ANK -->
+    searchQuery: String? = null,
+    onChangeSearchQuery: (String?) -> Unit = {},
+    // ANK <--
     modifier: Modifier = Modifier,
 ) {
+    // ANK -->
+    if (actionModeCounter == 0) {
+        SearchToolbar(
+            modifier = modifier,
+            titleContent = { AppBarTitle(stringResource(MR.strings.label_recent_updates)) },
+            searchQuery = searchQuery,
+            onChangeSearchQuery = onChangeSearchQuery,
+            actions = {
+                AppBarActions(
+                    persistentListOf(
+                        AppBar.Action(
+                            title = stringResource(MR.strings.action_filter),
+                            icon = Icons.Outlined.FilterList,
+                            iconTint = if (hasFilters) MaterialTheme.colorScheme.active else LocalContentColor.current,
+                            onClick = onFilterClicked,
+                        ),
+                        AppBar.Action(
+                            title = stringResource(MR.strings.action_view_upcoming),
+                            icon = Icons.Outlined.CalendarMonth,
+                            onClick = onCalendarClicked,
+                        ),
+                        AppBar.Action(
+                            title = stringResource(MR.strings.action_update_library),
+                            icon = Icons.Outlined.Refresh,
+                            onClick = onUpdateLibrary,
+                        ),
+                    ),
+                )
+            },
+            scrollBehavior = scrollBehavior,
+        )
+        return
+    }
+    // ANK <--
     AppBar(
         modifier = modifier,
         title = stringResource(MR.strings.label_recent_updates),

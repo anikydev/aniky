@@ -10,6 +10,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.Navigator
@@ -134,9 +135,10 @@ data object BrowseTab : Tab {
             bulkFavoriteScreenModel = bulkFavoriteScreenModel,
             // KMK <--
         )
+        val currentHideFeedTab by rememberUpdatedState(hideFeedTab)
         LaunchedEffect(Unit) {
             switchToExtensionTabChannel.receiveAsFlow()
-                .collectLatest { state.scrollToPage(/* SY --> */2/* SY <-- */) }
+                .collectLatest { state.scrollToPage(/* ANK --> */if (currentHideFeedTab) 1 else 2/* ANK <-- */) }
         }
 
         LaunchedEffect(Unit) {

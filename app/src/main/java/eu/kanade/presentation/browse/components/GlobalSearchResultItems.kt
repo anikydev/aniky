@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Error
@@ -18,11 +19,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.padding
@@ -39,6 +43,9 @@ fun GlobalSearchResultItem(
     // SY -->
     onLongClick: (() -> Unit)? = null,
     // SY <--
+    // ANK -->
+    resultCount: Int? = null,
+    // ANK <--
     content: @Composable () -> Unit,
 ) {
     Column(modifier = modifier) {
@@ -61,13 +68,41 @@ fun GlobalSearchResultItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                )
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    // ANK -->
+                    if (resultCount != null && resultCount > 0) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ) {
+                            Text(
+                                text = resultCount.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            )
+                        }
+                    }
+                    // ANK <--
+                }
                 if (subtitle != null) {
-                    Text(text = subtitle)
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
             IconButton(onClick = onClick) {

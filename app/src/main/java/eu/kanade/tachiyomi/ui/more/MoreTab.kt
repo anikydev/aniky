@@ -26,10 +26,13 @@ import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.connections.discord.DiscordRPCService
 import eu.kanade.tachiyomi.data.connections.discord.DiscordScreen
 import eu.kanade.tachiyomi.data.download.DownloadManager
+import eu.kanade.tachiyomi.data.track.anilist.AniListNotificationStore
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.history.HistoryTab
 import eu.kanade.tachiyomi.ui.libraryUpdateError.LibraryUpdateErrorScreen
+import eu.kanade.tachiyomi.ui.main.MainActivity
+import eu.kanade.tachiyomi.ui.notifications.AniListNotificationsScreen
 import eu.kanade.tachiyomi.ui.setting.PlayerSettingsScreen
 import eu.kanade.tachiyomi.ui.setting.SettingsScreen
 import eu.kanade.tachiyomi.ui.stats.StatsScreen
@@ -39,7 +42,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import tachiyomi.core.common.util.lang.launchIO
+import tachiyomi.domain.libraryUpdateError.interactor.GetLibraryUpdateErrors
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import uy.kohesive.injekt.Injekt
@@ -70,6 +75,10 @@ data object MoreTab : Tab {
         val navigator = LocalNavigator.currentOrThrow
         val screenModel = rememberScreenModel { MoreScreenModel() }
         val downloadQueueState by screenModel.downloadQueueState.collectAsState()
+        val notificationsUnreadCount by screenModel.unreadCount.collectAsState(initial = 0)
+        // ANK -->
+        val libraryUpdateErrorsCount by screenModel.libraryUpdateErrorsCount.collectAsState(initial = 0)
+        // ANK <--
         MoreScreen(
             downloadQueueStateProvider = { downloadQueueState },
             downloadedOnly = screenModel.downloadedOnly,
@@ -82,7 +91,9 @@ data object MoreTab : Tab {
             // SY <--
             onClickDownloadQueue = { navigator.push(DownloadQueueScreen) },
             onClickCategories = { navigator.push(CategoryScreen()) },
-            onClickStats = { navigator.push(StatsScreen) },
+            onClickStats = { navigator.push(StatsScreen()) },
+            onClickAniListNotifications = { navigator.push(AniListNotificationsScreen()) },
+            notificationsUnreadCount = notificationsUnreadCount,
             onClickDataAndStorage = { navigator.push(SettingsScreen(SettingsScreen.Destination.DataAndStorage)) },
             onClickPlayerSettings = { navigator.push(PlayerSettingsScreen) },
             onClickSettings = { navigator.push(SettingsScreen()) },
@@ -94,10 +105,14 @@ data object MoreTab : Tab {
             // KMK -->
             onClickLibraryUpdateErrors = { navigator.push(LibraryUpdateErrorScreen()) },
             // KMK <--
+            // ANK -->
+            libraryUpdateErrorsCount = libraryUpdateErrorsCount,
+            // ANK <--
         )
 
         // AM (DISCORD) -->
         LaunchedEffect(Unit) {
+            (context as? MainActivity)?.ready = true
             with(DiscordRPCService) {
                 discordScope.launchIO { setScreen(context, DiscordScreen.MORE) }
             }
@@ -112,6 +127,10 @@ private class MoreScreenModel(
     // SY -->
     uiPreferences: UiPreferences = Injekt.get(),
     // SY <--
+    // ANK -->
+    getLibraryUpdateErrors: GetLibraryUpdateErrors = Injekt.get(),
+    notificationStore: AniListNotificationStore = Injekt.get(),
+    // ANK <--
 ) : ScreenModel {
 
     var downloadedOnly by preferences.downloadedOnly().asState(screenModelScope)
@@ -124,6 +143,12 @@ private class MoreScreenModel(
 
     private var _downloadQueueState: MutableStateFlow<DownloadQueueState> = MutableStateFlow(DownloadQueueState.Stopped)
     val downloadQueueState: StateFlow<DownloadQueueState> = _downloadQueueState.asStateFlow()
+
+    val unreadCount = notificationStore.unreadCount
+
+    // ANK -->
+    val libraryUpdateErrorsCount = getLibraryUpdateErrors.subscribe().map { it.size }
+    // ANK <--
 
     init {
         // Handle running/paused status change and queue progress updating

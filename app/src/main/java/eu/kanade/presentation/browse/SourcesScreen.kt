@@ -1,6 +1,5 @@
 package eu.kanade.presentation.browse
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -14,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.TravelExplore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,25 +27,21 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.times
 import eu.kanade.domain.source.model.installedExtension
 import eu.kanade.presentation.browse.components.BaseSourceItem
-import eu.kanade.presentation.components.AnimatedFloatingSearchBox
-import eu.kanade.presentation.components.SOURCE_SEARCH_BOX_HEIGHT
 import eu.kanade.presentation.util.animateItemFastScroll
 import eu.kanade.tachiyomi.ui.browse.source.SourcesScreenModel
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreenModel.Listing
 import eu.kanade.tachiyomi.util.system.LocaleHelper
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import tachiyomi.domain.source.model.Pin
 import tachiyomi.domain.source.model.Source
 import tachiyomi.i18n.MR
-import tachiyomi.i18n.kmk.KMR
+import tachiyomi.i18n.ank.AMR
 import tachiyomi.presentation.core.components.FastScrollLazyColumn
 import tachiyomi.presentation.core.components.LabeledCheckbox
 import tachiyomi.presentation.core.components.Scroller.STICKY_HEADER_KEY_PREFIX
@@ -53,6 +49,7 @@ import tachiyomi.presentation.core.components.material.SECONDARY_ALPHA
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
+import tachiyomi.presentation.core.screens.EmptyScreenAction
 import tachiyomi.presentation.core.screens.LoadingScreen
 import tachiyomi.presentation.core.theme.header
 import tachiyomi.source.local.isLocal
@@ -66,37 +63,46 @@ fun SourcesScreen(
     onLongClickItem: (Source) -> Unit,
     // KMK -->
     @Suppress("UNUSED_PARAMETER") modifier: Modifier = Modifier,
-    onChangeSearchQuery: (String?) -> Unit,
+    @Suppress("UNUSED_PARAMETER") onChangeSearchQuery: (String?) -> Unit = {},
     // KMK <--
+    // ANK -->
+    onBrowseExtensions: (() -> Unit)? = null,
+    // ANK <--
 ) {
     // KMK -->
     val lazyListState = rememberLazyListState()
-
-    BackHandler(enabled = !state.searchQuery.isNullOrBlank()) {
-        onChangeSearchQuery("")
-    }
     // KMK <--
 
     when {
         state.isLoading -> LoadingScreen(Modifier.padding(contentPadding))
-        // KMK -->
-        state.searchQuery == null &&
-            // KMK <--
-            state.isEmpty -> EmptyScreen(
-            MR.strings.source_empty_screen,
+        // ANK -->
+        state.isEmpty && !state.searchQuery.isNullOrBlank() -> EmptyScreen(
+            MR.strings.no_results_found,
             modifier = Modifier.padding(contentPadding),
         )
-        // KMK -->
-        else -> Box(
+        // ANK <--
+        state.isEmpty -> EmptyScreen(
+            MR.strings.source_empty_screen,
             modifier = Modifier.padding(contentPadding),
-        ) {
-            val density = LocalDensity.current
-            var searchBoxHeight by remember { mutableStateOf(SOURCE_SEARCH_BOX_HEIGHT) }
-
+            // ANK -->
+            actions = if (onBrowseExtensions != null) {
+                persistentListOf(
+                    EmptyScreenAction(
+                        stringRes = AMR.strings.sources_browse_extensions,
+                        icon = Icons.Outlined.TravelExplore,
+                        onClick = onBrowseExtensions,
+                    ),
+                )
+            } else {
+                null
+            },
+            // ANK <--
+        )
+        // ANK -->
+        else -> {
             FastScrollLazyColumn(
                 state = lazyListState,
-                contentPadding = PaddingValues(top = searchBoxHeight),
-                // KMK <--
+                contentPadding = contentPadding,
             ) {
                 state.items.forEach { model ->
                     when (model) {
@@ -138,26 +144,8 @@ fun SourcesScreen(
                     }
                 }
             }
-
-            // KMK -->
-            AnimatedFloatingSearchBox(
-                listState = lazyListState,
-                searchQuery = state.searchQuery,
-                onChangeSearchQuery = onChangeSearchQuery,
-                placeholderText = stringResource(KMR.strings.action_search_for_source),
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(
-                        horizontal = MaterialTheme.padding.medium,
-                        vertical = MaterialTheme.padding.small,
-                    )
-                    .align(Alignment.TopCenter),
-                onGloballyPositioned = { layoutCoordinates ->
-                    searchBoxHeight = with(density) { layoutCoordinates.size.height.toDp() + 2 * MaterialTheme.padding.small }
-                },
-            )
-            // KMK <--
         }
+        // ANK <--
     }
 }
 

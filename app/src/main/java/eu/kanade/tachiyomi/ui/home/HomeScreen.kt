@@ -17,10 +17,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRailDefaults
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,10 +35,13 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastFilter
 import androidx.compose.ui.util.fastForEach
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -47,6 +53,8 @@ import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
+import eu.kanade.tachiyomi.data.download.DownloadManager
+import eu.kanade.tachiyomi.ui.anilist.AniListTab
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.history.HistoryTab
@@ -66,6 +74,7 @@ import soup.compose.material.motion.animation.materialFadeThroughIn
 import soup.compose.material.motion.animation.materialFadeThroughOut
 import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.domain.library.service.LibraryPreferences
+import tachiyomi.domain.libraryUpdateError.interactor.GetLibraryUpdateErrors
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.NavigationBar
 import tachiyomi.presentation.core.components.material.NavigationRail
@@ -90,31 +99,36 @@ object HomeScreen : Screen() {
         UpdatesTab,
         HistoryTab,
         BrowseTab,
+        AniListTab,
         MoreTab,
     )
 
     private val uiPreferences: UiPreferences by injectLazy()
-    private val defaultTab = uiPreferences.startScreen().get().tab
 
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val defaultTab = remember { uiPreferences.startScreen().get().tab }
 
         // SY -->
         val scope = rememberCoroutineScope()
         val alwaysShowLabel by remember {
             Injekt.get<UiPreferences>().bottomBarLabels().asState(scope)
         }
+        val isAmoled by remember {
+            Injekt.get<UiPreferences>().themeDarkAmoled().asState(scope)
+        }
+        val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
         // SY <--
 
         val context = LocalContext.current
         val activity = context as? ComponentActivity
         val preferences = Injekt.get<PreferenceStore>()
-        val castManager = remember { CastManager(activity!!, preferences) }
+        val castManager = remember(activity) { activity?.let { CastManager(it, preferences) } }
 
-        LaunchedEffect(Unit) {
-            castManager.startDeviceDiscovery()
-            castManager.reconnect()
+        LaunchedEffect(castManager) {
+            castManager?.startDeviceDiscovery()
+            castManager?.reconnect()
         }
 
         TabNavigator(
@@ -126,7 +140,9 @@ object HomeScreen : Screen() {
                 Scaffold(
                     startBar = {
                         if (isTabletUi()) {
-                            NavigationRail {
+                            NavigationRail(
+                                containerColor = if (isAmoled && isDark) Color.Black else NavigationRailDefaults.ContainerColor,
+                            ) {
                                 TABS
                                     // SY -->
                                     .fastFilter { it.isEnabled() }
@@ -140,19 +156,21 @@ object HomeScreen : Screen() {
                     bottomBar = {
                         if (!isTabletUi()) {
                             Column {
-                                val isConnected =
-                                    castManager.castState.collectAsState().value == CastManager.CastState.CONNECTED
-                                AnimatedVisibility(
-                                    visible = isConnected,
-                                    enter = expandVertically(),
-                                    exit = shrinkVertically(),
-                                ) {
-                                    CastMiniController(
-                                        castManager = castManager,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                                    )
+                                if (castManager != null) {
+                                    val isConnected =
+                                        castManager.castState.collectAsState().value == CastManager.CastState.CONNECTED
+                                    AnimatedVisibility(
+                                        visible = isConnected,
+                                        enter = expandVertically(),
+                                        exit = shrinkVertically(),
+                                    ) {
+                                        CastMiniController(
+                                            castManager = castManager,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                                        )
+                                    }
                                 }
 
                                 val bottomNavVisible by produceState(initialValue = true) {
@@ -163,14 +181,23 @@ object HomeScreen : Screen() {
                                     enter = expandVertically(),
                                     exit = shrinkVertically(),
                                 ) {
-                                    NavigationBar {
-                                        TABS
-                                            // SY -->
-                                            .fastFilter { it.isEnabled() }
-                                            // SY <--
-                                            .fastForEach {
-                                                NavigationBarItem(it/* SY --> */, alwaysShowLabel/* SY <-- */)
-                                            }
+                                    Column {
+                                        HorizontalDivider(
+                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f),
+                                            thickness = 1.dp,
+                                        )
+                                        NavigationBar(
+                                            tonalElevation = 0.dp,
+                                            containerColor = if (isAmoled && isDark) Color.Black else NavigationBarDefaults.containerColor,
+                                        ) {
+                                            TABS
+                                                // SY -->
+                                                .fastFilter { it.isEnabled() }
+                                                // SY <--
+                                                .fastForEach {
+                                                    NavigationBarItem(it/* SY --> */, alwaysShowLabel/* SY <-- */)
+                                                }
+                                        }
                                     }
                                 }
                             }
@@ -225,6 +252,9 @@ object HomeScreen : Screen() {
                             is Tab.Library -> LibraryTab
                             is Tab.Updates -> UpdatesTab
                             is Tab.History -> HistoryTab
+                            // ANK -->
+                            is Tab.AniList -> AniListTab
+                            // ANK <--
                             is Tab.Browse -> {
                                 if (it.toExtensions) {
                                     BrowseTab.showExtension()
@@ -365,6 +395,40 @@ object HomeScreen : Screen() {
                             }
                         }
                     }
+                    tab is AniListTab -> {
+                        tab.Badge()
+                    }
+                    // ANK -->
+                    tab is MoreTab -> {
+                        val badgeState by produceState(initialValue = 0 to false) {
+                            val downloadManager = Injekt.get<DownloadManager>()
+                            val getErrors = Injekt.get<GetLibraryUpdateErrors>()
+                            combine(
+                                downloadManager.queueState,
+                                getErrors.subscribe(),
+                            ) { queue, errors ->
+                                (queue.size + errors.size) to (errors.isNotEmpty() && queue.isEmpty())
+                            }.collectLatest { value = it }
+                        }
+                        val (totalCount, isErrorOnly) = badgeState
+                        if (totalCount > 0) {
+                            Badge(
+                                containerColor = if (isErrorOnly) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
+                                contentColor = if (isErrorOnly) {
+                                    MaterialTheme.colorScheme.onError
+                                } else {
+                                    MaterialTheme.colorScheme.onPrimary
+                                },
+                            ) {
+                                Text(text = totalCount.toString())
+                            }
+                        }
+                    }
+                    // ANK <--
                 }
             },
         ) {
@@ -393,6 +457,9 @@ object HomeScreen : Screen() {
         data class Library(val mangaIdToOpen: Long? = null) : Tab
         data object Updates : Tab
         data object History : Tab
+        // ANK -->
+        data object AniList : Tab
+        // ANK <--
         data class Browse(val toExtensions: Boolean = false) : Tab
         data class More(
             val toDownloads: Boolean,

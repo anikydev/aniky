@@ -109,6 +109,11 @@ class GlobalSearchScreen(
                 bulkFavoriteScreenModel = bulkFavoriteScreenModel,
                 hasPinnedSources = screenModel.hasPinnedSources(),
                 // KMK <--
+                // ANK -->
+                onToggleFavorite = { manga ->
+                    bulkFavoriteScreenModel.addRemoveManga(manga, haptic)
+                },
+                // ANK <--
             )
         }
 

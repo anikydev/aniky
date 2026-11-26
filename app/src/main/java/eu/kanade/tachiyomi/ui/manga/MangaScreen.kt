@@ -78,6 +78,7 @@ import eu.kanade.tachiyomi.ui.browse.BulkFavoriteScreenModel
 import eu.kanade.tachiyomi.ui.browse.extension.ExtensionsScreen
 import eu.kanade.tachiyomi.ui.browse.extension.details.SourcePreferencesScreen
 import eu.kanade.tachiyomi.ui.browse.migration.season.MigrateSeasonSelectScreen
+import eu.kanade.tachiyomi.ui.browse.seasonal.SeasonalAnimeDetailScreen
 import eu.kanade.tachiyomi.ui.browse.source.SourcesScreen
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.ui.browse.source.feed.SourceFeedScreen
@@ -125,7 +126,7 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
 class MangaScreen(
-    private val mangaId: Long,
+    val mangaId: Long,
     /**
      * If it is opened from Source then it will auto expand the manga description.
      * - `true`: Expand description if it's not favorited
@@ -480,6 +481,9 @@ class MangaScreen(
                 }
             },
             // <-- AY
+            onRelationClick = { mediaId ->
+                navigator.push(SeasonalAnimeDetailScreen(mediaId))
+            },
         )
 
         var showScanlatorsDialog by remember { mutableStateOf(false) }

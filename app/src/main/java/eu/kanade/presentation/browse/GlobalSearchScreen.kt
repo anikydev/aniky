@@ -1,12 +1,29 @@
 package eu.kanade.presentation.browse
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import eu.kanade.domain.source.model.installedExtension
 import eu.kanade.presentation.browse.components.GlobalSearchCardRow
 import eu.kanade.presentation.browse.components.GlobalSearchErrorResultItem
@@ -22,7 +39,10 @@ import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SourceFilter
 import eu.kanade.tachiyomi.util.system.LocaleHelper
 import kotlinx.collections.immutable.ImmutableMap
 import tachiyomi.domain.manga.model.Manga
+import tachiyomi.i18n.ank.AMR
 import tachiyomi.presentation.core.components.material.Scaffold
+import tachiyomi.presentation.core.i18n.stringResource
+import tachiyomi.presentation.core.util.pureBlackBorder
 import tachiyomi.domain.source.model.Source as DomainSource
 
 @Composable
@@ -41,6 +61,9 @@ fun GlobalSearchScreen(
     bulkFavoriteScreenModel: BulkFavoriteScreenModel,
     hasPinnedSources: Boolean,
     // KMK <--
+    // ANK -->
+    onToggleFavorite: ((Manga) -> Unit)? = null,
+    // ANK <--
 ) {
     // KMK -->
     val bulkFavoriteState by bulkFavoriteScreenModel.state.collectAsState()
@@ -92,6 +115,9 @@ fun GlobalSearchScreen(
             }
         },
     ) { paddingValues ->
+        // ANK -->
+        val sourcesWithMatches = state.items.values.count { it is SearchItemResult.Success && !it.isEmpty }
+        // ANK <--
         GlobalSearchContent(
             items = state.filteredItems,
             contentPadding = paddingValues,
@@ -102,6 +128,12 @@ fun GlobalSearchScreen(
             // KMK -->
             selection = bulkFavoriteState.selection,
             // KMK <--
+            // ANK -->
+            totalSources = state.total,
+            sourcesWithMatches = sourcesWithMatches,
+            isSearching = state.progress < state.total,
+            onToggleFavorite = onToggleFavorite.takeIf { !bulkFavoriteState.selectionMode },
+            // ANK <--
         )
     }
 }
@@ -118,10 +150,72 @@ internal fun GlobalSearchContent(
     // KMK -->
     selection: List<Manga>,
     // KMK <--
+    // ANK -->
+    totalSources: Int = items.size,
+    sourcesWithMatches: Int = items.values.count { it is SearchItemResult.Success && !it.isEmpty },
+    isSearching: Boolean = items.values.any { it is SearchItemResult.Loading },
+    onToggleFavorite: ((Manga) -> Unit)? = null,
+    // ANK <--
 ) {
     LazyColumn(
         contentPadding = contentPadding,
     ) {
+        // ANK: Live global search summary pill
+        if (totalSources > 0) {
+            item(key = "global-search-summary") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        modifier = Modifier.pureBlackBorder(RoundedCornerShape(20.dp)),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            if (isSearching) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Outlined.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(15.dp),
+                                )
+                            }
+                            Text(
+                                text = if (isSearching) {
+                                    stringResource(
+                                        AMR.strings.global_search_status_searching,
+                                        sourcesWithMatches,
+                                        totalSources,
+                                    )
+                                } else {
+                                    stringResource(
+                                        AMR.strings.global_search_status_done,
+                                        sourcesWithMatches,
+                                        totalSources,
+                                    )
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
         items.forEach { (source, result) ->
             item(key = "global-search-${source.id}") {
                 // KMK -->
@@ -150,6 +244,9 @@ internal fun GlobalSearchContent(
                     subtitle = LocaleHelper.getLocalizedDisplayName(source.lang),
                     onClick = { onClickSource(source) },
                     modifier = Modifier.animateItem(),
+                    // ANK -->
+                    resultCount = (result as? SearchItemResult.Success)?.result?.size,
+                    // ANK <--
                 ) {
                     when (result) {
                         SearchItemResult.Loading -> {
@@ -164,6 +261,9 @@ internal fun GlobalSearchContent(
                                 // KMK -->
                                 selection = selection,
                                 // KMK <--
+                                // ANK -->
+                                onToggleFavorite = onToggleFavorite,
+                                // ANK <--
                             )
                         }
                         is SearchItemResult.Error -> {

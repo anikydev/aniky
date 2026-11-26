@@ -51,6 +51,30 @@ class LibrarySettingsScreenModel(
         toggleFilter { libraryPreferences.filterTracking(id) }
     }
 
+    // ANK -->
+    fun clearFilter(preference: (LibraryPreferences) -> Preference<TriState>) {
+        preference(libraryPreferences).set(TriState.DISABLED)
+    }
+
+    fun clearTrackerFilter(id: Int) {
+        libraryPreferences.filterTracking(id).set(TriState.DISABLED)
+    }
+
+    fun clearAllFilters() {
+        libraryPreferences.filterDownloaded().set(TriState.DISABLED)
+        libraryPreferences.filterUnread().set(TriState.DISABLED)
+        libraryPreferences.filterStarted().set(TriState.DISABLED)
+        libraryPreferences.filterBookmarked().set(TriState.DISABLED)
+        libraryPreferences.filterCompleted().set(TriState.DISABLED)
+        libraryPreferences.filterIntervalCustom().set(TriState.DISABLED)
+        libraryPreferences.filterLewd().set(TriState.DISABLED)
+        libraryPreferences.filterCategories().set(false)
+        trackersFlow.value.forEach { service ->
+            libraryPreferences.filterTracking(service.id.toInt()).set(TriState.DISABLED)
+        }
+    }
+    // ANK <--
+
     fun setDisplayMode(mode: LibraryDisplayMode) {
         setDisplayMode.await(mode)
     }

@@ -52,6 +52,7 @@ fun TrackStatusSelector(
     selections: Map<Long, StringResource?>,
     onConfirm: () -> Unit,
     onDismissRequest: () -> Unit,
+    onRemove: (() -> Unit)? = null,
 ) {
     BaseSelector(
         title = stringResource(MR.strings.status),
@@ -90,6 +91,18 @@ fun TrackStatusSelector(
         },
         onConfirm = onConfirm,
         onDismissRequest = onDismissRequest,
+        thirdButton = onRemove?.let { removeAction ->
+            {
+                TextButton(
+                    onClick = removeAction,
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Text(text = stringResource(MR.strings.action_remove))
+                }
+            }
+        },
     )
 }
 

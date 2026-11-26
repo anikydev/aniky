@@ -1,10 +1,24 @@
 package eu.kanade.presentation.manga.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.CallMerge
+import androidx.compose.material.icons.automirrored.outlined.Label
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.FlipToBack
+import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Recommend
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.surfaceColorAtElevation
@@ -153,11 +167,14 @@ fun MangaToolbar(
                             onClick = onClickFilter,
                         ),
                     )
+                    // ANK -->
+                    // Section 1: Playback & Refresh
                     if (changeAnimeSkipIntro != null) {
                         add(
                             AppBar.OverflowAction(
                                 title = stringResource(AYMR.strings.action_change_intro_length),
                                 onClick = changeAnimeSkipIntro,
+                                icon = Icons.Outlined.Timer,
                             ),
                         )
                     }
@@ -165,29 +182,18 @@ fun MangaToolbar(
                         AppBar.OverflowAction(
                             title = stringResource(MR.strings.action_webview_refresh),
                             onClick = onClickRefresh,
+                            icon = Icons.Outlined.Refresh,
                         ),
                     )
+                    add(AppBar.OverflowDivider)
+
+                    // Section 2: Library & Metadata
                     if (onClickEditCategory != null) {
                         add(
                             AppBar.OverflowAction(
                                 title = stringResource(MR.strings.action_edit_categories),
                                 onClick = onClickEditCategory,
-                            ),
-                        )
-                    }
-                    if (onClickMigrate != null) {
-                        add(
-                            AppBar.OverflowAction(
-                                title = stringResource(MR.strings.action_migrate),
-                                onClick = onClickMigrate,
-                            ),
-                        )
-                    }
-                    if (onClickShare != null) {
-                        add(
-                            AppBar.OverflowAction(
-                                title = stringResource(MR.strings.action_share),
-                                onClick = onClickShare,
+                                icon = Icons.AutoMirrored.Outlined.Label,
                             ),
                         )
                     }
@@ -195,22 +201,57 @@ fun MangaToolbar(
                         AppBar.OverflowAction(
                             title = stringResource(AMR.strings.action_notes),
                             onClick = onClickEditNotes,
+                            icon = Icons.Outlined.EditNote,
                         ),
                     )
+                    // SY -->
+                    if (onClickEditInfo != null) {
+                        add(
+                            AppBar.OverflowAction(
+                                title = stringResource(SYMR.strings.action_edit_info),
+                                onClick = onClickEditInfo,
+                                icon = Icons.Outlined.Edit,
+                            ),
+                        )
+                    }
+                    // SY <--
+                    if (onClickShare != null) {
+                        add(
+                            AppBar.OverflowAction(
+                                title = stringResource(MR.strings.action_share),
+                                onClick = onClickShare,
+                                icon = Icons.Outlined.Share,
+                            ),
+                        )
+                    }
+                    add(AppBar.OverflowDivider)
+
+                    // Section 3: Source, Migration & Merge
+                    if (onClickMigrate != null) {
+                        add(
+                            AppBar.OverflowAction(
+                                title = stringResource(MR.strings.action_migrate),
+                                onClick = onClickMigrate,
+                                icon = Icons.Outlined.SwapHoriz,
+                            ),
+                        )
+                    }
                     // SY -->
                     if (onClickMerge != null) {
                         add(
                             AppBar.OverflowAction(
                                 title = stringResource(SYMR.strings.merge),
                                 onClick = onClickMerge,
+                                icon = Icons.AutoMirrored.Outlined.CallMerge,
                             ),
                         )
                     }
-                    if (onClickEditInfo != null) {
+                    if (onClickMergedSettings != null) {
                         add(
                             AppBar.OverflowAction(
-                                title = stringResource(SYMR.strings.action_edit_info),
-                                onClick = onClickEditInfo,
+                                title = stringResource(SYMR.strings.merge_settings),
+                                onClick = onClickMergedSettings,
+                                icon = Icons.Outlined.Settings,
                             ),
                         )
                     }
@@ -220,6 +261,7 @@ fun MangaToolbar(
                             AppBar.OverflowAction(
                                 title = stringResource(KMR.strings.pref_source_related_mangas),
                                 onClick = onClickRelatedMangas,
+                                icon = Icons.Outlined.AutoAwesome,
                             ),
                         )
                     }
@@ -229,24 +271,30 @@ fun MangaToolbar(
                             AppBar.OverflowAction(
                                 title = stringResource(SYMR.strings.az_recommends),
                                 onClick = onClickRecommend,
-                            ),
-                        )
-                    }
-                    if (onClickMergedSettings != null) {
-                        add(
-                            AppBar.OverflowAction(
-                                title = stringResource(SYMR.strings.merge_settings),
-                                onClick = onClickMergedSettings,
+                                icon = Icons.Outlined.Recommend,
                             ),
                         )
                     }
                     // SY <--
                     // KMK -->
+                    if (onClickSourceSettings != null) {
+                        add(
+                            AppBar.OverflowAction(
+                                title = stringResource(MR.strings.source_settings),
+                                onClick = onClickSourceSettings,
+                                icon = Icons.Outlined.Tune,
+                            ),
+                        )
+                    }
+                    add(AppBar.OverflowDivider)
+
+                    // Section 4: Storage & Reset
                     if (onOpenMangaFolder != null) {
                         add(
                             AppBar.OverflowAction(
                                 title = stringResource(KMR.strings.action_open_folder),
                                 onClick = onOpenMangaFolder,
+                                icon = Icons.Outlined.FolderOpen,
                             ),
                         )
                     }
@@ -254,17 +302,11 @@ fun MangaToolbar(
                         AppBar.OverflowAction(
                             title = stringResource(AMR.strings.action_clear_anime),
                             onClick = onClearManga,
+                            icon = Icons.Outlined.DeleteSweep,
                         ),
                     )
-                    if (onClickSourceSettings != null) {
-                        add(
-                            AppBar.OverflowAction(
-                                title = stringResource(MR.strings.source_settings),
-                                onClick = onClickSourceSettings,
-                            ),
-                        )
-                    }
                     // KMK <--
+                    // ANK <--
                 }
                     .build(),
             )

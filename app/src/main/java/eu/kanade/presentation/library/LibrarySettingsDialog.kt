@@ -406,6 +406,10 @@ private fun ColumnScope.DisplayPage(
         label = stringResource(AMR.strings.action_display_show_continue_watching_button),
         pref = screenModel.libraryPreferences.showContinueReadingButton(),
     )
+    CheckboxItem(
+        label = stringResource(AMR.strings.pref_show_continue_watching_card),
+        pref = screenModel.libraryPreferences.showContinueWatchingCard(),
+    )
 
     HeadingItem(MR.strings.tabs_header)
     CheckboxItem(

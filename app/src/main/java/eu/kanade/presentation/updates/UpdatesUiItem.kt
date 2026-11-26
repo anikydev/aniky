@@ -20,13 +20,16 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -80,6 +83,7 @@ import tachiyomi.i18n.ank.AMR
 import tachiyomi.presentation.core.components.material.DISABLED_ALPHA
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
+import tachiyomi.presentation.core.util.pureBlackBorder
 import tachiyomi.presentation.core.util.selectedBackground
 import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.TimeUnit
@@ -91,12 +95,31 @@ internal fun LazyListScope.updatesLastUpdatedItem(
         Box(
             modifier = Modifier
                 .animateItemFastScroll()
-                .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small),
+                .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.extraSmall),
         ) {
-            Text(
-                text = stringResource(MR.strings.updates_last_update_info, relativeTimeSpanString(lastUpdated)),
-                fontStyle = FontStyle.Italic,
-            )
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.pureBlackBorder(RoundedCornerShape(10.dp)),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Schedule,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(MR.strings.updates_last_update_info, relativeTimeSpanString(lastUpdated)),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
         }
     }
 }
@@ -538,6 +561,7 @@ private val UpdateItemWidth = 48.dp
 internal fun formatProgress(milliseconds: Long): String {
     return if (milliseconds > 3600000L) {
         String.format(
+            java.util.Locale.getDefault(),
             "%d:%02d:%02d",
             TimeUnit.MILLISECONDS.toHours(milliseconds),
             TimeUnit.MILLISECONDS.toMinutes(milliseconds) -
@@ -547,6 +571,7 @@ internal fun formatProgress(milliseconds: Long): String {
         )
     } else {
         String.format(
+            java.util.Locale.getDefault(),
             "%d:%02d",
             TimeUnit.MILLISECONDS.toMinutes(milliseconds),
             TimeUnit.MILLISECONDS.toSeconds(milliseconds) -

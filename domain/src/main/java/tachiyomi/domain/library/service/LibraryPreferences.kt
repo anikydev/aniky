@@ -86,6 +86,21 @@ class LibraryPreferences(
         false,
     )
 
+    fun showContinueWatchingCard() = preferenceStore.getBoolean(
+        "pref_show_continue_watching_card",
+        true,
+    )
+
+    fun continueWatchingDismissedAt() = preferenceStore.getLong(
+        "pref_continue_watching_dismissed_at",
+        0L,
+    )
+
+    fun dismissedContinueWatchingIds() = preferenceStore.getStringSet(
+        "pref_dismissed_continue_watching_ids",
+        emptySet(),
+    )
+
     fun markDuplicateReadChapterAsRead() = preferenceStore.getStringSet("mark_duplicate_read_chapter_read", emptySet())
 
     // region Filter
@@ -364,12 +379,12 @@ class LibraryPreferences(
 
     fun swipeToStartAction() = preferenceStore.getEnum(
         "pref_episode_swipe_end_action",
-        ChapterSwipeAction.ToggleBookmark,
+        ChapterSwipeAction.Disabled,
     )
 
     fun swipeToEndAction() = preferenceStore.getEnum(
         "pref_episode_swipe_start_action",
-        ChapterSwipeAction.ToggleRead,
+        ChapterSwipeAction.Disabled,
     )
 
     fun updateMangaTitles() = preferenceStore.getBoolean("pref_update_library_manga_titles", false)

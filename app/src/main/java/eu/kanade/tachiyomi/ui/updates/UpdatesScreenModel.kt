@@ -146,19 +146,21 @@ class UpdatesScreenModel(
         }
 
         getUpdatesItemPreferenceFlow()
-            .map { prefs ->
-                listOf(
+            .distinctUntilChanged()
+            .onEach { prefs ->
+                val hasActive = listOf(
                     prefs.filterUnread,
                     prefs.filterDownloaded,
                     prefs.filterStarted,
                     prefs.filterBookmarked,
-                )
-                    .any { it != TriState.DISABLED }
-            }
-            .distinctUntilChanged()
-            .onEach {
+                ).any { it != TriState.DISABLED } || prefs.filterExcludedScanlators
                 mutableState.update { state ->
-                    state.copy(hasActiveFilters = it)
+                    state.copy(
+                        hasActiveFilters = hasActive,
+                        filterUnread = prefs.filterUnread,
+                        filterDownloaded = prefs.filterDownloaded,
+                        filterBookmarked = prefs.filterBookmarked,
+                    )
                 }
             }
             .launchIn(screenModelScope)
@@ -484,10 +486,21 @@ class UpdatesScreenModel(
 
     fun toggleAllSelection(selected: Boolean) {
         mutableState.update { state ->
+            // ANK -->
+            val query = state.searchQuery?.trim()
             val newItems = state.items.map {
-                selectedChapterIds.addOrRemove(it.update.chapterId, selected)
-                it.copy(selected = selected)
+                val matches = !selected ||
+                    query.isNullOrEmpty() ||
+                    it.update.mangaTitle.contains(query, ignoreCase = true) ||
+                    it.update.chapterName.contains(query, ignoreCase = true)
+                if (matches) {
+                    selectedChapterIds.addOrRemove(it.update.chapterId, selected)
+                    it.copy(selected = selected)
+                } else {
+                    it
+                }
             }
+            // ANK <--
             state.copy(items = newItems.toPersistentList())
         }
 
@@ -497,10 +510,20 @@ class UpdatesScreenModel(
 
     fun invertSelection() {
         mutableState.update { state ->
+            // ANK -->
+            val query = state.searchQuery?.trim()
             val newItems = state.items.map {
-                selectedChapterIds.addOrRemove(it.update.chapterId, !it.selected)
-                it.copy(selected = !it.selected)
+                val matches = query.isNullOrEmpty() ||
+                    it.update.mangaTitle.contains(query, ignoreCase = true) ||
+                    it.update.chapterName.contains(query, ignoreCase = true)
+                if (matches) {
+                    selectedChapterIds.addOrRemove(it.update.chapterId, !it.selected)
+                    it.copy(selected = !it.selected)
+                } else {
+                    it
+                }
             }
+            // ANK <--
             state.copy(items = newItems.toPersistentList())
         }
         selectedPositions[0] = -1
@@ -600,6 +623,41 @@ class UpdatesScreenModel(
         mutableState.update { it.copy(dialog = Dialog.FilterSheet) }
     }
 
+    fun clearQuickFilters() {
+        updatesPreferences.filterUnread().set(TriState.DISABLED)
+        updatesPreferences.filterDownloaded().set(TriState.DISABLED)
+        updatesPreferences.filterStarted().set(TriState.DISABLED)
+        updatesPreferences.filterBookmarked().set(TriState.DISABLED)
+        updatesPreferences.filterExcludedScanlators().set(false)
+    }
+
+    fun toggleQuickFilterUnread() {
+        val current = updatesPreferences.filterUnread().get()
+        updatesPreferences.filterUnread().set(
+            if (current == TriState.ENABLED_IS) TriState.DISABLED else TriState.ENABLED_IS,
+        )
+    }
+
+    fun toggleQuickFilterDownloaded() {
+        val current = updatesPreferences.filterDownloaded().get()
+        updatesPreferences.filterDownloaded().set(
+            if (current == TriState.ENABLED_IS) TriState.DISABLED else TriState.ENABLED_IS,
+        )
+    }
+
+    fun toggleQuickFilterBookmarked() {
+        val current = updatesPreferences.filterBookmarked().get()
+        updatesPreferences.filterBookmarked().set(
+            if (current == TriState.ENABLED_IS) TriState.DISABLED else TriState.ENABLED_IS,
+        )
+    }
+
+    // ANK -->
+    fun setSearchQuery(query: String?) {
+        mutableState.update { it.copy(searchQuery = query) }
+    }
+    // ANK <--
+
     @Immutable
     private data class ItemPreferences(
         val filterDownloaded: TriState,
@@ -613,18 +671,35 @@ class UpdatesScreenModel(
     data class State(
         val isLoading: Boolean = true,
         val hasActiveFilters: Boolean = false,
+        val filterUnread: TriState = TriState.DISABLED,
+        val filterDownloaded: TriState = TriState.DISABLED,
+        val filterBookmarked: TriState = TriState.DISABLED,
         val items: PersistentList<UpdatesItem> = persistentListOf(),
         // KMK -->
         val expandedState: Set<String> = persistentSetOf(),
         // KMK <--
+        // ANK -->
+        val searchQuery: String? = null,
+        // ANK <--
         val dialog: Dialog? = null,
     ) {
         val selected = items.filter { it.selected }
         val selectionMode = selected.isNotEmpty()
 
         fun getUiModel(): List<UpdatesUiModel> {
+            // ANK -->
+            val query = searchQuery?.trim()
+            val visibleItems = if (query.isNullOrEmpty()) {
+                items
+            } else {
+                items.filter {
+                    it.update.mangaTitle.contains(query, ignoreCase = true) ||
+                        it.update.chapterName.contains(query, ignoreCase = true)
+                }
+            }
+            // ANK <--
             // KMK -->
-            return items
+            return visibleItems
                 .groupBy { it.update.dateFetch.toLocalDate() }
                 .flatMap { (date, mangas) ->
                     val header = UpdatesUiModel.Header(date, mangas.size)
@@ -647,7 +722,7 @@ class UpdatesScreenModel(
                 }
                 .distinctBy {
                     when (it) {
-                        is UpdatesUiModel.Header -> it.hashCode()
+                        is UpdatesUiModel.Header -> "header-${it.date.toEpochDay()}"
                         is UpdatesUiModel.Item -> "${it.item.update.mangaId}-${it.item.update.chapterId}"
                     }
                 }

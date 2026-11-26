@@ -13,7 +13,6 @@ import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.GetApp
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Security
@@ -47,7 +46,6 @@ import eu.kanade.presentation.util.Screen
 import kotlinx.collections.immutable.persistentListOf
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.ank.AMR
-import tachiyomi.i18n.kmk.KMR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import cafe.adriel.voyager.core.screen.Screen as VoyagerScreen
@@ -156,7 +154,7 @@ object SettingsMainScreen : Screen() {
                                 modifier = modifier,
                                 title = stringResource(item.titleRes),
                                 subtitle = item.formatSubtitle(),
-                                icon = item.icon,
+                                icon = item.iconRes?.let { androidx.compose.ui.res.painterResource(it) } ?: item.icon,
                                 onPreferenceClick = { navigator.navigate(item.screen, twoPane) },
                             )
                         }
@@ -174,7 +172,8 @@ object SettingsMainScreen : Screen() {
         val titleRes: StringResource,
         val subtitleRes: StringResource,
         val formatSubtitle: @Composable () -> String = { stringResource(subtitleRes) },
-        val icon: ImageVector,
+        val icon: ImageVector? = null,
+        val iconRes: Int? = null,
         val screen: VoyagerScreen,
     )
 
@@ -203,14 +202,12 @@ object SettingsMainScreen : Screen() {
             icon = Icons.Outlined.Sync,
             screen = SettingsTrackingScreen,
         ),
-        // AM (CONNECTIONS) -->
         Item(
-            titleRes = KMR.strings.pref_category_connections,
-            subtitleRes = KMR.strings.pref_connections_summary,
-            icon = Icons.Outlined.Link,
-            screen = SettingsConnectionScreen,
+            titleRes = AMR.strings.pref_category_anilist,
+            subtitleRes = AMR.strings.pref_anilist_summary,
+            iconRes = eu.kanade.tachiyomi.R.drawable.ic_anilist,
+            screen = SettingsAnilistScreen,
         ),
-        // <-- AM (CONNECTIONS)
         Item(
             titleRes = MR.strings.browse,
             subtitleRes = MR.strings.pref_browse_summary,

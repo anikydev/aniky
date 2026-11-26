@@ -20,6 +20,7 @@ import eu.kanade.presentation.browse.SourceOptionsDialog
 import eu.kanade.presentation.browse.SourcesScreen
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.TabContent
+import eu.kanade.tachiyomi.ui.browse.BrowseTab
 import eu.kanade.tachiyomi.ui.browse.extension.details.ExtensionDetailsScreen
 import eu.kanade.tachiyomi.ui.browse.source.SourcesScreen.SmartSearchConfig
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
@@ -49,24 +50,21 @@ fun Screen.sourcesTab(
             true -> MR.strings.label_sources
             false -> SYMR.strings.find_in_another_source
         },
-        actions = persistentListOf(
+        // ANK -->
+        searchEnabled = true,
+        searchQuery = state.searchQuery,
+        onChangeSearchQuery = screenModel::search,
+        // ANK <--
+        actions = persistentListOf<AppBar.AppBarAction>(
             AppBar.Action(
                 title = stringResource(MR.strings.action_global_search),
                 icon = Icons.Outlined.TravelExplore,
                 onClick = { navigator.push(GlobalSearchScreen(smartSearchConfig?.origTitle ?: "")) },
             ),
-            // KMK -->
-            AppBar.Action(
-                title = stringResource(KMR.strings.action_toggle_nsfw_only),
-                icon = Icons.Outlined._18UpRating,
-                iconTint = if (state.nsfwOnly) MaterialTheme.colorScheme.error else LocalContentColor.current,
-                onClick = { screenModel.toggleNsfwOnly() },
-            ),
-            // KMK <--
-        ).let {
+        ).let { actions ->
             when (smartSearchConfig) {
                 null -> {
-                    it.add(
+                    actions.add(
                         AppBar.Action(
                             title = stringResource(MR.strings.action_filter),
                             icon = Icons.Outlined.FilterList,
@@ -75,9 +73,18 @@ fun Screen.sourcesTab(
                     )
                 }
                 // Merge: find in another source
-                else -> it
+                else -> actions
             }
-        },
+        }.add(
+            // ANK -->
+            AppBar.OverflowAction(
+                title = stringResource(KMR.strings.action_toggle_nsfw_only),
+                icon = Icons.Outlined._18UpRating,
+                iconTint = if (state.nsfwOnly) MaterialTheme.colorScheme.error else LocalContentColor.current,
+                onClick = { screenModel.toggleNsfwOnly() },
+            ),
+            // ANK <--
+        ),
         // SY <--
         content = { contentPadding, snackbarHostState ->
             SourcesScreen(
@@ -99,6 +106,13 @@ fun Screen.sourcesTab(
                 // KMK -->
                 onChangeSearchQuery = screenModel::search,
                 // KMK <--
+                // ANK -->
+                onBrowseExtensions = if (smartSearchConfig == null) {
+                    { BrowseTab.showExtension() }
+                } else {
+                    null
+                },
+                // ANK <--
             )
 
             when (val dialog = state.dialog) {

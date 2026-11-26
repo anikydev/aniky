@@ -7,7 +7,8 @@ import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.TravelExplore
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -21,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.util.fastAll
 import androidx.compose.ui.util.fastAny
 import cafe.adriel.voyager.core.model.rememberScreenModel
@@ -30,6 +30,7 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
+import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.category.components.ChangeCategoryDialog
 import eu.kanade.presentation.library.DeleteLibraryMangaDialog
 import eu.kanade.presentation.library.LibrarySettingsDialog
@@ -37,7 +38,6 @@ import eu.kanade.presentation.library.ResetInfoMangaDialog
 import eu.kanade.presentation.library.components.LibraryContent
 import eu.kanade.presentation.library.components.LibraryToolbar
 import eu.kanade.presentation.manga.components.LibraryBottomActionMenu
-import eu.kanade.presentation.more.onboarding.GETTING_STARTED_URL
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.connections.discord.DiscordRPCService
@@ -48,6 +48,7 @@ import eu.kanade.tachiyomi.data.sync.SyncDataJob
 import eu.kanade.tachiyomi.ui.browse.source.SourcesScreen
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
+import eu.kanade.tachiyomi.ui.history.HistoryTab
 import eu.kanade.tachiyomi.ui.home.HomeScreen
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
@@ -73,6 +74,7 @@ import tachiyomi.domain.library.model.LibraryGroup
 import tachiyomi.domain.library.model.LibraryManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.ank.AMR
 import tachiyomi.i18n.kmk.KMR
 import tachiyomi.i18n.sy.SYMR
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -284,17 +286,31 @@ data object LibraryTab : Tab {
                     LoadingScreen(Modifier.padding(contentPadding))
                 }
                 state.searchQuery.isNullOrEmpty() && !state.hasActiveFilters && state.isLibraryEmpty -> {
-                    val handler = LocalUriHandler.current
                     EmptyScreen(
                         stringRes = MR.strings.information_empty_library,
                         modifier = Modifier.padding(contentPadding),
+                        // ANK -->
                         actions = persistentListOf(
                             EmptyScreenAction(
-                                stringRes = MR.strings.getting_started_guide,
-                                icon = Icons.AutoMirrored.Outlined.HelpOutline,
-                                onClick = { handler.openUri(GETTING_STARTED_URL) },
+                                stringRes = AMR.strings.empty_library_explore_anilist,
+                                icon = Icons.Outlined.Explore,
+                                onClick = {
+                                    scope.launch {
+                                        HomeScreen.openTab(HomeScreen.Tab.AniList)
+                                    }
+                                },
+                            ),
+                            EmptyScreenAction(
+                                stringRes = AMR.strings.empty_library_browse_sources,
+                                icon = Icons.Outlined.TravelExplore,
+                                onClick = {
+                                    scope.launch {
+                                        HomeScreen.openTab(HomeScreen.Tab.Browse())
+                                    }
+                                },
                             ),
                         ),
+                        // ANK <--
                     )
                 }
                 else -> {
@@ -331,6 +347,26 @@ data object LibraryTab : Tab {
                         getDisplayMode = { screenModel.getDisplayMode() },
                         getColumnsForOrientation = { screenModel.getColumnsForOrientation(it) },
                         getItemsForCategory = { state.getItemsForCategory(it) },
+                        continueWatching = state.continueWatching.takeIf { state.showContinueWatchingCard },
+                        // ANK -->
+                        continueWatchingList = state.continueWatchingList.takeIf { state.showContinueWatchingCard } ?: persistentListOf(),
+                        onDismissContinueWatching = screenModel::dismissContinueWatching,
+                        onClickHistory = {
+                            if (Injekt.get<UiPreferences>().showNavHistory().get()) {
+                                scope.launch { HomeScreen.openTab(HomeScreen.Tab.History) }
+                            } else {
+                                navigator.push(HistoryTab)
+                            }
+                        },
+                        settingsScreenModel = settingsScreenModel,
+                        activeCategory = state.activeCategory,
+                        onClickFilterSheet = screenModel::showSettingsDialog,
+                        // ANK <--
+                        onResumeContinueWatching = { item ->
+                            scope.launchIO {
+                                openEpisode(context, item.animeId, item.episodeId)
+                            }
+                        },
                     )
                 }
             }
@@ -465,12 +501,16 @@ data object LibraryTab : Tab {
     }
 
     private suspend fun openEpisode(context: Context, episode: Episode) {
+        openEpisode(context, episode.animeId, episode.id)
+    }
+
+    private suspend fun openEpisode(context: Context, animeId: Long, episodeId: Long) {
         val playerPreferences: PlayerPreferences by injectLazy()
         val extPlayer = playerPreferences.alwaysUseExternalPlayer().get()
         MainActivity.startPlayerActivity(
             context,
-            episode.animeId,
-            episode.id,
+            animeId,
+            episodeId,
             extPlayer,
         )
     }

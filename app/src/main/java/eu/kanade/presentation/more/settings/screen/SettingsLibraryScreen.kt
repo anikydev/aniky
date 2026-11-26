@@ -65,6 +65,7 @@ object SettingsLibraryScreen : SearchableSettings {
         val allCategories by getCategories.subscribe().collectAsState(initial = emptyList())
 
         return listOf(
+            getDisplayGroup(libraryPreferences),
             getCategoriesGroup(LocalNavigator.currentOrThrow, allCategories, libraryPreferences),
             getGlobalUpdateGroup(allCategories, libraryPreferences),
             // AY -->
@@ -74,6 +75,22 @@ object SettingsLibraryScreen : SearchableSettings {
             // SY -->
             getSortingCategory(LocalNavigator.currentOrThrow, libraryPreferences),
             // SY <--
+        )
+    }
+
+    @Composable
+    private fun getDisplayGroup(
+        libraryPreferences: LibraryPreferences,
+    ): Preference.PreferenceGroup {
+        return Preference.PreferenceGroup(
+            title = stringResource(MR.strings.pref_category_display),
+            preferenceItems = persistentListOf(
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = libraryPreferences.showContinueWatchingCard(),
+                    title = stringResource(AMR.strings.pref_show_continue_watching_card),
+                    subtitle = stringResource(AMR.strings.pref_show_continue_watching_card_summary),
+                ),
+            ),
         )
     }
 

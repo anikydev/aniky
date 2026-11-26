@@ -10,11 +10,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.FormatListNumbered
+import androidx.compose.material.icons.outlined.NewReleases
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.VideoLibrary
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallExtendedFloatingActionButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.material3.rememberTopAppBarState
@@ -52,14 +63,17 @@ import eu.kanade.presentation.components.NestedMenuItem
 import eu.kanade.presentation.theme.colorscheme.AndroidViewColorScheme
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.databinding.DownloadListBinding
+import eu.kanade.tachiyomi.ui.home.HomeScreen
 import kotlinx.collections.immutable.persistentListOf
 import tachiyomi.core.common.util.lang.launchUI
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.aniyomi.AYMR
+import tachiyomi.i18n.ank.AMR
 import tachiyomi.presentation.core.components.Pill
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
+import tachiyomi.presentation.core.screens.EmptyScreenAction
 import kotlin.math.roundToInt
 
 object DownloadQueueScreen : Screen() {
@@ -81,6 +95,9 @@ object DownloadQueueScreen : Screen() {
         val downloadCount by remember {
             derivedStateOf { downloadList.sumOf { it.subItems.size } }
         }
+        // ANK -->
+        var showCancelAllConfirm by remember { mutableStateOf(false) }
+        // ANK <--
 
         val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
         var fabExpanded by remember { mutableStateOf(true) }
@@ -106,6 +123,35 @@ object DownloadQueueScreen : Screen() {
             }
         }
 
+        // ANK -->
+        if (showCancelAllConfirm) {
+            AlertDialog(
+                onDismissRequest = { showCancelAllConfirm = false },
+                title = { Text(text = stringResource(AMR.strings.download_cancel_all_confirm_title)) },
+                text = { Text(text = stringResource(AMR.strings.download_cancel_all_confirm_message)) },
+                dismissButton = {
+                    TextButton(onClick = { showCancelAllConfirm = false }) {
+                        Text(text = stringResource(MR.strings.action_cancel))
+                    }
+                },
+                confirmButton = {
+                    FilledTonalButton(
+                        onClick = {
+                            showCancelAllConfirm = false
+                            screenModel.clearQueue()
+                        },
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        ),
+                    ) {
+                        Text(text = stringResource(MR.strings.action_cancel_all))
+                    }
+                },
+            )
+        }
+        // ANK <--
+
         Scaffold(
             topBar = {
                 AppBar(
@@ -121,7 +167,7 @@ object DownloadQueueScreen : Screen() {
                                 val pillAlpha = if (isSystemInDarkTheme()) 0.12f else 0.08f
                                 Pill(
                                     text = "$downloadCount",
-                                    modifier = Modifier.padding(start = 4.dp),
+                                    modifier = Modifier.padding(start = 6.dp),
                                     color = MaterialTheme.colorScheme.onBackground
                                         .copy(alpha = pillAlpha),
                                     fontSize = 14.sp,
@@ -140,50 +186,70 @@ object DownloadQueueScreen : Screen() {
                             ) {
                                 NestedMenuItem(
                                     text = { Text(text = stringResource(MR.strings.action_order_by_upload_date)) },
+                                    leadingIcon = { Icon(Icons.Outlined.Schedule, contentDescription = null) },
                                     children = { closeMenu ->
                                         DropdownMenuItem(
                                             text = { Text(text = stringResource(MR.strings.action_newest)) },
+                                            leadingIcon = {
+                                                Icon(Icons.Outlined.ArrowDownward, contentDescription = null)
+                                            },
                                             onClick = {
                                                 screenModel.reorderQueue(
                                                     { it.download.chapter.dateUpload },
                                                     true,
                                                 )
                                                 closeMenu()
+                                                onDismissRequest()
                                             },
                                         )
                                         DropdownMenuItem(
                                             text = { Text(text = stringResource(MR.strings.action_oldest)) },
+                                            leadingIcon = {
+                                                Icon(Icons.Outlined.ArrowUpward, contentDescription = null)
+                                            },
                                             onClick = {
                                                 screenModel.reorderQueue(
                                                     { it.download.chapter.dateUpload },
                                                     false,
                                                 )
                                                 closeMenu()
+                                                onDismissRequest()
                                             },
                                         )
                                     },
                                 )
                                 NestedMenuItem(
                                     text = { Text(text = stringResource(AYMR.strings.action_order_by_episode_number)) },
+                                    leadingIcon = {
+                                        Icon(Icons.Outlined.FormatListNumbered, contentDescription = null)
+                                    },
                                     children = { closeMenu ->
                                         DropdownMenuItem(
                                             text = { Text(text = stringResource(MR.strings.action_asc)) },
+                                            leadingIcon = {
+                                                Icon(Icons.Outlined.ArrowUpward, contentDescription = null)
+                                            },
                                             onClick = {
                                                 screenModel.reorderQueue(
                                                     { it.download.chapter.chapterNumber },
                                                     false,
                                                 )
                                                 closeMenu()
+                                                onDismissRequest()
                                             },
                                         )
                                         DropdownMenuItem(
                                             text = { Text(text = stringResource(MR.strings.action_desc)) },
+                                            leadingIcon = {
+                                                Icon(Icons.Outlined.ArrowDownward, contentDescription = null)
+                                            },
                                             onClick = {
                                                 screenModel.reorderQueue(
                                                     { it.download.chapter.chapterNumber },
                                                     true,
                                                 )
                                                 closeMenu()
+                                                onDismissRequest()
                                             },
                                         )
                                     },
@@ -199,7 +265,9 @@ object DownloadQueueScreen : Screen() {
                                     ),
                                     AppBar.OverflowAction(
                                         title = stringResource(MR.strings.action_cancel_all),
-                                        onClick = { screenModel.clearQueue() },
+                                        icon = Icons.Outlined.DeleteSweep,
+                                        iconTint = MaterialTheme.colorScheme.error,
+                                        onClick = { showCancelAllConfirm = true },
                                     ),
                                 ),
                             )
@@ -234,10 +302,34 @@ object DownloadQueueScreen : Screen() {
             },
         ) { contentPadding ->
             if (downloadList.isEmpty()) {
+                // ANK -->
                 EmptyScreen(
                     stringRes = MR.strings.information_no_downloads,
                     modifier = Modifier.padding(contentPadding),
+                    actions = persistentListOf(
+                        EmptyScreenAction(
+                            stringRes = AMR.strings.download_empty_open_library,
+                            icon = Icons.Outlined.VideoLibrary,
+                            onClick = {
+                                navigator.pop()
+                                launchUI {
+                                    HomeScreen.openTab(HomeScreen.Tab.Library())
+                                }
+                            },
+                        ),
+                        EmptyScreenAction(
+                            stringRes = AMR.strings.download_empty_open_updates,
+                            icon = Icons.Outlined.NewReleases,
+                            onClick = {
+                                navigator.pop()
+                                launchUI {
+                                    HomeScreen.openTab(HomeScreen.Tab.Updates)
+                                }
+                            },
+                        ),
+                    ),
                 )
+                // ANK <--
                 return@Scaffold
             }
 

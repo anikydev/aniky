@@ -36,7 +36,7 @@ import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.player.settings.PlayerPreferences
 import eu.kanade.tachiyomi.ui.updates.UpdatesScreenModel.Event
 import kotlinx.coroutines.flow.collectLatest
-import mihon.feature.upcoming.UpcomingScreen
+import mihon.feature.upcoming.anime.UpcomingAnimeScreen
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.domain.updates.model.UpdatesWithRelations
@@ -116,13 +116,21 @@ data object UpdatesTab : Tab {
                     openEpisode(context, updateItem.update, altPlayer)
                 }
             },
-            onCalendarClicked = { navigator.push(UpcomingScreen()) },
+            onCalendarClicked = { navigator.push(UpcomingAnimeScreen()) },
             onFilterClicked = screenModel::showFilterDialog,
             hasActiveFilters = state.hasActiveFilters,
             // KMK -->
             usePanoramaCover = usePanoramaCover,
             collapseToggle = screenModel::toggleExpandedState,
             // KMK <--
+            // ANK -->
+            searchQuery = state.searchQuery,
+            onChangeSearchQuery = screenModel::setSearchQuery,
+            onClearQuickFilters = screenModel::clearQuickFilters,
+            onToggleQuickUnread = screenModel::toggleQuickFilterUnread,
+            onToggleQuickDownloaded = screenModel::toggleQuickFilterDownloaded,
+            onToggleQuickBookmarked = screenModel::toggleQuickFilterBookmarked,
+            // ANK <--
         )
 
         val onDismissDialog = { screenModel.setDialog(null) }

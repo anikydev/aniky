@@ -64,6 +64,10 @@ import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.torrentServer.service.TorrentServerService
 import eu.kanade.tachiyomi.data.track.EnhancedTracker
 import eu.kanade.tachiyomi.data.track.TrackerManager
+import eu.kanade.tachiyomi.data.track.anilist.Anilist
+import eu.kanade.tachiyomi.data.track.anilist.dto.ALAnimeDetails
+import eu.kanade.tachiyomi.data.track.anilist.dto.ALAnimeDetailsRelationEdge
+import eu.kanade.tachiyomi.data.track.anilist.dto.ALAnimeDetailsRelationNode
 import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.UnmeteredSource
@@ -80,7 +84,6 @@ import eu.kanade.tachiyomi.ui.manga.RelatedManga.Companion.sorted
 import eu.kanade.tachiyomi.ui.manga.track.TrackItem
 import eu.kanade.tachiyomi.ui.player.settings.GesturePreferences
 import eu.kanade.tachiyomi.ui.player.settings.PlayerPreferences
-import eu.kanade.tachiyomi.util.AniChartApi
 import eu.kanade.tachiyomi.util.chapter.getNextUnread
 import eu.kanade.tachiyomi.util.removeCovers
 import eu.kanade.tachiyomi.util.system.getBitmapOrNull
@@ -92,6 +95,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -295,6 +299,8 @@ class MangaScreenModel(
 
     // AY -->
     val showNextChapterAirTime = trackPreferences.showNextChapterAiringTime().get()
+    val showAniListRelations: Boolean
+        get() = trackPreferences.showAniListRelations().get()
     val alwaysUseExternalPlayer = playerPreferences.alwaysUseExternalPlayer().get()
     val useExternalDownloader = downloadPreferences.useExternalDownloader().get()
     // <-- AY
@@ -435,6 +441,18 @@ class MangaScreenModel(
                 }
         }
 
+        screenModelScope.launchIO {
+            trackPreferences.showAniListRelations().changes()
+                .flowWithLifecycle(lifecycle)
+                .collectLatest { enabled ->
+                    if (enabled) {
+                        successState?.let { fetchRelations(it.manga) }
+                    } else {
+                        updateSuccessState { it.copy(relations = emptyList(), relationsInLibrary = emptySet()) }
+                    }
+                }
+        }
+
         observeDownloads()
 
         screenModelScope.launchIO {
@@ -552,6 +570,7 @@ class MangaScreenModel(
                 // KMK -->
                 launch { fetchRelatedMangasFromSource() }
                 // KMK <--
+                launch { fetchRelations(manga) }
             }
 
             // Initial loading finished
@@ -661,6 +680,7 @@ class MangaScreenModel(
                 // KMK <--
                 async { fetchMangaFromSource(manualFetch) },
                 async { fetchChaptersFromSource(manualFetch) },
+                async { successState?.let { fetchRelations(it.manga, forceRefresh = true) } },
             )
             fetchFromSourceTasks.awaitAll()
             updateSuccessState { it.copy(isRefreshingData = false) }
@@ -2335,6 +2355,7 @@ class MangaScreenModel(
                 .distinctUntilChanged()
                 .collectLatest { trackItems ->
                     updateAiringTime(manga, trackItems, manualFetch = false)
+                    fetchRelations(manga)
                 }
         }
     }
@@ -2345,7 +2366,27 @@ class MangaScreenModel(
         trackItems: List<TrackItem>,
         manualFetch: Boolean,
     ) {
-        val airingEpisodeData = AniChartApi().loadAiringTime(manga, trackItems, manualFetch)
+        val currentAiringData = Pair(manga.nextEpisodeToAir, manga.nextEpisodeAiringAt)
+        val airingEpisodeData = if (manga.status.toInt() == SAnime.COMPLETED) {
+            Pair(1, 0L)
+        } else if (!manualFetch && manga.nextEpisodeAiringAt * 1000L > System.currentTimeMillis()) {
+            currentAiringData
+        } else {
+            runCatching {
+                val anilist = trackerManager.aniList
+                val mediaId = trackItems.firstOrNull { it.tracker.id == TrackerManager.ANILIST }?.track?.remoteId
+                    ?.takeIf { it > 0 }
+                    ?: trackItems.firstOrNull { it.tracker.id == trackerManager.myAnimeList.id }?.track?.remoteId
+                        ?.takeIf { it > 0 }
+                        ?.let { anilist.getMediaIdByMalId(it) }
+                if (mediaId != null) {
+                    val next = anilist.getNextAiringEpisode(mediaId)
+                    Pair(next?.episode?.toInt() ?: 1, next?.airingAt ?: 0L)
+                } else {
+                    Pair(1, 0L)
+                }
+            }.getOrDefault(currentAiringData)
+        }
         setAnimeViewerFlags.awaitSetNextEpisodeAiring(manga.id, airingEpisodeData)
         updateSuccessState { it.copy(nextAiringEpisode = airingEpisodeData) }
     }
@@ -2466,6 +2507,101 @@ class MangaScreenModel(
     }
     // <-- AY
 
+    /**
+     * Best-effort AniList relations for the info screen. The media id is resolved from, in
+     * order of reliability: an AniList track, a MyAnimeList track (via idMal lookup), or a
+     * title search. Any failure just means no relations row.
+     */
+    private suspend fun fetchRelations(manga: Manga, forceRefresh: Boolean = false) {
+        try {
+            val anilist = trackerManager.aniList
+            // AniList reads require the authenticated client, so when logged out the resolve+fetch
+            // (including the title-search fallback) can only fail — skip it instead of firing a
+            // doomed request and logging a warning on every anime-detail open.
+            if (!anilist.isLoggedIn) return
+            val tracks = getTracks.await(manga.id)
+            val trackedMediaId = tracks.firstOrNull { it.trackerId == TrackerManager.ANILIST }?.remoteId
+                ?: tracks.firstOrNull { it.trackerId == trackerManager.myAnimeList.id }
+                    ?.takeIf { it.remoteId > 0 }
+                    ?.let { anilist.getMediaIdByMalId(it.remoteId) }
+                ?: resolveMediaIdByTitle(manga, anilist)
+                ?: return
+            val details = anilist.getAnimeDetails(trackedMediaId, forceRefresh) ?: return
+            val (edges, inLibrary) = if (showAniListRelations) {
+                val currentEdge = ALAnimeDetailsRelationEdge(
+                    relationType = "CURRENT",
+                    node = ALAnimeDetailsRelationNode(
+                        id = details.id,
+                        title = details.title,
+                        coverImage = details.coverImage,
+                        format = details.format,
+                    ),
+                )
+                val allEdges = listOf(currentEdge) + details.relations?.edges.orEmpty()
+                val libIds = findInLibraryIds(allEdges).toMutableSet()
+                if (manga.favorite) {
+                    libIds += details.id
+                }
+                allEdges to libIds
+            } else {
+                emptyList<ALAnimeDetailsRelationEdge>() to emptySet<Long>()
+            }
+            updateSuccessState {
+                it.copy(
+                    relations = edges,
+                    relationsInLibrary = inLibrary,
+                    anilistMediaId = details.id,
+                    anilistDetails = details,
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logcat(LogPriority.WARN, e) { "Failed to load AniList relations" }
+        }
+    }
+
+    private suspend fun resolveMediaIdByTitle(manga: Manga, anilist: Anilist): Long? {
+        if (manga.title.isBlank()) return null
+        val results = anilist.searchAnime(manga.title)
+        return results.firstOrNull { it.title.equals(manga.title, ignoreCase = true) }?.remote_id
+            ?: results.firstOrNull()?.remote_id
+    }
+
+    /** Relation nodes that are already in the user's library: exact AniList track match first,
+     * then a normalized title match against library entries for untracked ones. */
+    private suspend fun findInLibraryIds(edges: List<ALAnimeDetailsRelationEdge>): Set<Long> {
+        val nodeIds = edges.map { it.node.id }.toSet()
+        if (nodeIds.isEmpty()) return emptySet()
+
+        val matched = getTracks.await()
+            .filter { it.trackerId == TrackerManager.ANILIST && it.remoteId in nodeIds }
+            .mapTo(mutableSetOf()) { it.remoteId }
+
+        val remaining = edges.filter { it.node.id !in matched }
+        if (remaining.isNotEmpty()) {
+            val libraryTitles = mangaRepository.getFavorites()
+                .mapTo(mutableSetOf()) { normalizeTitleForMatch(it.title) }
+            remaining.forEach { edge ->
+                val title = normalizeTitleForMatch(edge.node.title.userPreferred.orEmpty())
+                // Reject very short matches: punctuation/case-stripped titles under ~3 chars are
+                // too ambiguous to trust as "the same show" and would only produce false badges.
+                if (title.length >= 3 && title in libraryTitles) {
+                    matched += edge.node.id
+                }
+            }
+        }
+        return matched
+    }
+
+    /** Normalizes an anime title for fuzzy matching: strips combining diacritics, punctuation,
+     * and separator whitespace, then lowercases, so "K-On!" vs "kon" compare equal. */
+    private fun normalizeTitleForMatch(title: String): String =
+        java.text.Normalizer.normalize(title, java.text.Normalizer.Form.NFD)
+            .replace(Regex("[\\p{M}\\p{P}\\p{Z}\\p{C}]+"), "")
+            .lowercase()
+            .trim()
+
     sealed interface State {
         @Immutable
         data object Loading : State
@@ -2518,6 +2654,10 @@ class MangaScreenModel(
             val relatedMangaCollection: List<RelatedManga>? = null,
             val seedColor: Color? = manga.asMangaCover().vibrantCoverColor?.let { Color(it) },
             // KMK <--
+            val relations: List<ALAnimeDetailsRelationEdge> = emptyList(),
+            val relationsInLibrary: Set<Long> = emptySet(),
+            val anilistMediaId: Long? = null,
+            val anilistDetails: ALAnimeDetails? = null,
         ) : State {
             // KMK -->
             /**

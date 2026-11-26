@@ -159,7 +159,9 @@ private fun BoxScope.CoverTextOverlay(
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
+            // ANK -->
+            .clip(RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp))
+            // ANK <--
             .background(
                 Brush.verticalGradient(
                     0f to Color.Transparent,
@@ -348,7 +350,9 @@ private fun MangaGridCover(
         if (badgesStart != null) {
             BadgeGroup(
                 modifier = Modifier
-                    .padding(4.dp)
+                    // ANK -->
+                    .padding(6.dp)
+                    // ANK <--
                     .align(Alignment.TopStart),
                 content = badgesStart,
             )
@@ -357,7 +361,9 @@ private fun MangaGridCover(
         if (badgesEnd != null) {
             BadgeGroup(
                 modifier = Modifier
-                    .padding(4.dp)
+                    // ANK -->
+                    .padding(6.dp)
+                    // ANK <--
                     .align(Alignment.TopEnd),
                 content = badgesEnd,
             )
@@ -398,7 +404,9 @@ private fun GridItemSelectable(
 ) {
     Box(
         modifier = modifier
-            .clip(MaterialTheme.shapes.small)
+            // ANK -->
+            .clip(RoundedCornerShape(12.dp))
+            // ANK <--
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,

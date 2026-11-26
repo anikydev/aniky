@@ -23,6 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Badge
@@ -54,6 +55,7 @@ import eu.kanade.presentation.components.DropdownMenu
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
 import eu.kanade.presentation.track.components.TrackLogoIcon
 import eu.kanade.tachiyomi.data.track.Tracker
+import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.ui.manga.track.TrackItem
 import eu.kanade.tachiyomi.util.lang.toLocalDate
 import eu.kanade.tachiyomi.util.system.copyToClipboard
@@ -79,6 +81,7 @@ fun TrackInfoDialogHome(
     onRemoved: (TrackItem) -> Unit,
     onCopyLink: (TrackItem) -> Unit,
     onTogglePrivate: (TrackItem) -> Unit,
+    onOpenInAniList: ((TrackItem) -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -131,6 +134,11 @@ fun TrackInfoDialogHome(
                     private = item.track.private,
                     onTogglePrivate = { onTogglePrivate(item) }
                         .takeIf { supportsPrivate },
+                    onOpenInAniList = if (item.tracker.id == TrackerManager.ANILIST && onOpenInAniList != null) {
+                        { onOpenInAniList(item) }
+                    } else {
+                        null
+                    },
                 )
             } else {
                 TrackInfoItemEmpty(
@@ -165,6 +173,7 @@ private fun TrackInfoItem(
     onCopyLink: () -> Unit,
     private: Boolean,
     onTogglePrivate: (() -> Unit)?,
+    onOpenInAniList: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     Column {
@@ -216,12 +225,20 @@ private fun TrackInfoItem(
                 )
             }
             VerticalDivider()
+            IconButton(onClick = onRemoved) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(MR.strings.action_remove),
+                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
+                )
+            }
             TrackInfoItemMenu(
                 onOpenInBrowser = onOpenInBrowser,
                 onRemoved = onRemoved,
                 onCopyLink = onCopyLink,
                 private = private,
                 onTogglePrivate = onTogglePrivate,
+                onOpenInAniList = onOpenInAniList,
             )
         }
 
@@ -338,6 +355,7 @@ private fun TrackInfoItemMenu(
     onCopyLink: () -> Unit,
     private: Boolean,
     onTogglePrivate: (() -> Unit)?,
+    onOpenInAniList: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
@@ -351,6 +369,15 @@ private fun TrackInfoItemMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
+            if (onOpenInAniList != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(AMR.strings.pref_category_anilist)) },
+                    onClick = {
+                        onOpenInAniList()
+                        expanded = false
+                    },
+                )
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(MR.strings.action_open_in_browser)) },
                 onClick = {

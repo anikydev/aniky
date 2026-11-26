@@ -16,7 +16,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import eu.kanade.core.preference.PreferenceMutableState
+import eu.kanade.tachiyomi.ui.library.ContinueWatchingItem
 import eu.kanade.tachiyomi.ui.library.LibraryItem
+import eu.kanade.tachiyomi.ui.library.LibrarySettingsScreenModel
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import tachiyomi.domain.category.model.Category
@@ -48,6 +52,16 @@ fun LibraryContent(
     getDisplayMode: (Int) -> PreferenceMutableState<LibraryDisplayMode>,
     getColumnsForOrientation: (Boolean) -> PreferenceMutableState<Int>,
     getItemsForCategory: (Category) -> List<LibraryItem>,
+    continueWatching: ContinueWatchingItem? = null,
+    // ANK -->
+    continueWatchingList: ImmutableList<ContinueWatchingItem> = persistentListOf(),
+    onDismissContinueWatching: ((Long) -> Unit)? = null,
+    onClickHistory: (() -> Unit)? = null,
+    settingsScreenModel: LibrarySettingsScreenModel? = null,
+    activeCategory: Category? = null,
+    onClickFilterSheet: (() -> Unit)? = null,
+    // ANK <--
+    onResumeContinueWatching: ((ContinueWatchingItem) -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier.padding(
@@ -56,6 +70,30 @@ fun LibraryContent(
             end = contentPadding.calculateEndPadding(LocalLayoutDirection.current),
         ),
     ) {
+        // ANK: Thin removable active-filters & sort row right under the toolbar
+        if (hasActiveFilters && selection.isEmpty() && settingsScreenModel != null) {
+            LibraryActiveFiltersRow(
+                settingsScreenModel = settingsScreenModel,
+                category = activeCategory,
+                onClickFilterSheet = onClickFilterSheet,
+            )
+        }
+        val itemsToShow = if (continueWatching != null) {
+            persistentListOf(continueWatching)
+        } else if (continueWatchingList.isNotEmpty()) {
+            persistentListOf(continueWatchingList.first())
+        } else {
+            persistentListOf()
+        }
+        if (itemsToShow.isNotEmpty() && searchQuery.isNullOrEmpty() && selection.isEmpty() && onResumeContinueWatching != null) {
+            ContinueWatchingRow(
+                items = itemsToShow,
+                onClickResume = onResumeContinueWatching,
+                onClickAnime = onClickManga,
+                onDismiss = { animeId -> onDismissContinueWatching?.invoke(animeId) },
+                onClickHistory = onClickHistory,
+            )
+        }
         val pagerState = rememberPagerState(currentPage) { categories.size }
 
         val scope = rememberCoroutineScope()

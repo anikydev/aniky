@@ -47,6 +47,7 @@ import exh.util.isLewd
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
@@ -75,6 +76,7 @@ import tachiyomi.core.common.preference.TriState
 import tachiyomi.core.common.util.lang.compareToWithCollator
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.lang.launchNonCancellable
+import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.domain.category.interactor.GetCategories
 import tachiyomi.domain.category.interactor.SetMangaCategories
 import tachiyomi.domain.category.model.Category
@@ -82,6 +84,7 @@ import tachiyomi.domain.category.model.Category.Companion.UNCATEGORIZED_ID
 import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
 import tachiyomi.domain.chapter.interactor.GetMergedChaptersByMangaId
 import tachiyomi.domain.chapter.model.Chapter
+import tachiyomi.domain.history.interactor.GetHistory
 import tachiyomi.domain.history.interactor.GetNextChapters
 import tachiyomi.domain.library.model.LibraryDisplayMode
 import tachiyomi.domain.library.model.LibraryGroup
@@ -94,6 +97,7 @@ import tachiyomi.domain.manga.interactor.GetMergedMangaById
 import tachiyomi.domain.manga.interactor.SetCustomMangaInfo
 import tachiyomi.domain.manga.model.CustomMangaInfo
 import tachiyomi.domain.manga.model.Manga
+import tachiyomi.domain.manga.model.MangaCover
 import tachiyomi.domain.manga.model.MangaUpdate
 import tachiyomi.domain.manga.model.applyFilter
 import tachiyomi.domain.source.model.StubSource
@@ -115,6 +119,7 @@ class LibraryScreenModel(
     private val getCategories: GetCategories = Injekt.get(),
     private val getTracksPerManga: GetTracksPerManga = Injekt.get(),
     private val getNextChapters: GetNextChapters = Injekt.get(),
+    private val getHistory: GetHistory = Injekt.get(),
     private val getChaptersByMangaId: GetChaptersByMangaId = Injekt.get(),
     private val setReadStatus: SetReadStatus = Injekt.get(),
     private val updateManga: UpdateManga = Injekt.get(),
@@ -295,13 +300,74 @@ class LibraryScreenModel(
             libraryPreferences.categoryTabs().changes(),
             libraryPreferences.categoryNumberOfItems().changes(),
             libraryPreferences.showContinueReadingButton().changes(),
-        ) { a, b, c -> arrayOf(a, b, c) }
-            .onEach { (showCategoryTabs, showMangaCount, showMangaContinueButton) ->
+            libraryPreferences.showContinueWatchingCard().changes(),
+        ) { a, b, c, d -> arrayOf(a, b, c, d) }
+            .onEach { (showCategoryTabs, showMangaCount, showMangaContinueButton, showContinueWatchingCard) ->
                 mutableState.update { state ->
                     state.copy(
                         showCategoryTabs = showCategoryTabs,
                         showMangaCount = showMangaCount,
                         showMangaContinueButton = showMangaContinueButton,
+                        showContinueWatchingCard = showContinueWatchingCard,
+                    )
+                }
+            }
+            .launchIn(screenModelScope)
+
+        getHistory.subscribe("")
+            .distinctUntilChanged()
+            .onEach { historyList ->
+                val dismissedAt = libraryPreferences.continueWatchingDismissedAt().get()
+                val dismissedIds = libraryPreferences.dismissedContinueWatchingIds().get().toMutableSet()
+                var dismissedIdsChanged = false
+
+                val items = withIOContext {
+                    historyList
+                        .distinctBy { it.mangaId }
+                        .filter { entry ->
+                            val watchedAt = entry.readAt?.time ?: 0L
+                            if (watchedAt > dismissedAt && entry.mangaId.toString() in dismissedIds) {
+                                dismissedIds.remove(entry.mangaId.toString())
+                                dismissedIdsChanged = true
+                            }
+                            entry.mangaId.toString() !in dismissedIds
+                        }
+                        .take(5)
+                        .mapNotNull { entry ->
+                            val episodes = runCatching {
+                                getNextChapters.await(entry.mangaId, entry.chapterId, onlyUnread = false)
+                            }.getOrDefault(emptyList())
+                            val targetEpisode = episodes.firstOrNull { !it.read } ?: episodes.firstOrNull()
+                            targetEpisode?.let {
+                                ContinueWatchingItem(
+                                    animeId = entry.mangaId,
+                                    episodeId = it.id,
+                                    animeTitle = entry.title,
+                                    episodeName = it.name,
+                                    coverData = entry.coverData,
+                                    lastPosition = it.lastSecondSeen,
+                                    totalDuration = it.totalSeconds,
+                                )
+                            }
+                        }
+                }
+
+                if (dismissedIdsChanged) {
+                    libraryPreferences.dismissedContinueWatchingIds().set(dismissedIds)
+                }
+
+                val currentDismissedIds = dismissedIds.mapNotNull { it.toLongOrNull() }.toSet()
+                mutableState.update { state ->
+                    val effectiveDismissed = if (dismissedIdsChanged) {
+                        currentDismissedIds
+                    } else {
+                        state.dismissedContinueWatchingIds.ifEmpty { currentDismissedIds }
+                    }
+                    val visible = items.filter { it.animeId !in effectiveDismissed }.toImmutableList()
+                    state.copy(
+                        dismissedContinueWatchingIds = effectiveDismissed,
+                        continueWatching = visible.firstOrNull(),
+                        continueWatchingList = visible,
                     )
                 }
             }
@@ -325,8 +391,11 @@ class LibraryScreenModel(
             )
                 .fastAny { it != TriState.DISABLED } ||
                 // KMK -->
-                prefs.filterCategories
-            // KMK <--
+                prefs.filterCategories ||
+                // KMK <--
+                // ANK -->
+                prefs.globalFilterDownloaded
+            // <-- ANK
         }
             .distinctUntilChanged()
             .onEach {
@@ -1510,6 +1579,24 @@ class LibraryScreenModel(
     }
     // KMK <--
 
+    // ANK -->
+    fun dismissContinueWatching(animeId: Long) {
+        val now = System.currentTimeMillis()
+        libraryPreferences.continueWatchingDismissedAt().set(now)
+        val currentDismissed = libraryPreferences.dismissedContinueWatchingIds().get()
+        libraryPreferences.dismissedContinueWatchingIds().set(currentDismissed + animeId.toString())
+        mutableState.update { state ->
+            val newDismissed = state.dismissedContinueWatchingIds + animeId
+            val remaining = state.continueWatchingList.filterNot { it.animeId == animeId }.toImmutableList()
+            state.copy(
+                dismissedContinueWatchingIds = newDismissed,
+                continueWatchingList = remaining,
+                continueWatching = remaining.firstOrNull(),
+            )
+        }
+    }
+    // <-- ANK
+
     @Immutable
     private data class ItemPreferences(
         val downloadBadge: Boolean,
@@ -1558,6 +1645,10 @@ class LibraryScreenModel(
         val showCategoryTabs: Boolean = false,
         val showMangaCount: Boolean = false,
         val showMangaContinueButton: Boolean = false,
+        val showContinueWatchingCard: Boolean = true,
+        val continueWatching: ContinueWatchingItem? = null,
+        val continueWatchingList: ImmutableList<ContinueWatchingItem> = persistentListOf(),
+        val dismissedContinueWatchingIds: Set<Long> = emptySet(),
         val dialog: Dialog? = null,
         val libraryData: LibraryData = LibraryData(),
         private val activeCategoryIndex: Int = 0,
@@ -1645,3 +1736,14 @@ class LibraryScreenModel(
         }
     }
 }
+
+@Immutable
+data class ContinueWatchingItem(
+    val animeId: Long,
+    val episodeId: Long,
+    val animeTitle: String,
+    val episodeName: String,
+    val coverData: MangaCover,
+    val lastPosition: Long = 0L,
+    val totalDuration: Long = 0L,
+)

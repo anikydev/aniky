@@ -16,9 +16,9 @@ class GetHistory(
     fun subscribe(
         query: String,
         // KMK -->
-        unfinishedManga: Boolean?,
-        unfinishedChapter: Boolean?,
-        nonLibraryEntries: Boolean?,
+        unfinishedManga: Boolean? = null,
+        unfinishedChapter: Boolean? = null,
+        nonLibraryEntries: Boolean? = null,
         // KMK <--
     ): Flow<List<HistoryWithRelations>> {
         return repository.getHistory(

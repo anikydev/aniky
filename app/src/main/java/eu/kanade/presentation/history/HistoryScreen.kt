@@ -63,6 +63,9 @@ fun HistoryScreen(
     hasActiveFilters: Boolean,
     usePanoramaCover: Boolean,
     // KMK <--
+    // ANK -->
+    navigateUp: (() -> Unit)? = null,
+    // ANK <--
 ) {
     // KMK -->
     BackHandler(enabled = state.selectionMode, onBack = toggleSelectionMode)
@@ -82,6 +85,9 @@ fun HistoryScreen(
                 // KMK <--
                 else -> SearchToolbar(
                     titleContent = { AppBarTitle(stringResource(MR.strings.history)) },
+                    // ANK -->
+                    navigateUp = navigateUp,
+                    // ANK <--
                     searchQuery = state.searchQuery,
                     onChangeSearchQuery = onSearchQueryChange,
                     actions = {

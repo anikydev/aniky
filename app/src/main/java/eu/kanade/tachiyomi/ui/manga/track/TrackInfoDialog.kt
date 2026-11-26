@@ -56,6 +56,7 @@ import eu.kanade.tachiyomi.data.track.Tracker
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.data.track.model.TrackSearch
 import eu.kanade.tachiyomi.source.online.all.MergedSource
+import eu.kanade.tachiyomi.ui.browse.seasonal.SeasonalAnimeDetailScreen
 import eu.kanade.tachiyomi.util.lang.convertEpochMillisZone
 import eu.kanade.tachiyomi.util.lang.toLocalDate
 import eu.kanade.tachiyomi.util.system.copyToClipboard
@@ -84,6 +85,7 @@ import tachiyomi.domain.track.interactor.DeleteTrack
 import tachiyomi.domain.track.interactor.GetTracks
 import tachiyomi.domain.track.model.Track
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.ank.AMR
 import tachiyomi.presentation.core.components.LabeledCheckbox
 import tachiyomi.presentation.core.components.material.AlertDialogContent
 import tachiyomi.presentation.core.components.material.padding
@@ -130,6 +132,7 @@ data class TrackInfoDialogHomeScreen(
             onStatusClick = {
                 navigator.push(
                     TrackStatusSelectorScreen(
+                        mangaId = mangaId,
                         track = it.track!!,
                         serviceId = it.tracker.id,
                     ),
@@ -194,6 +197,12 @@ data class TrackInfoDialogHomeScreen(
                 )
             },
             onCopyLink = { context.copyTrackerLink(it) },
+            onOpenInAniList = {
+                val mediaId = it.track?.remoteId
+                if (mediaId != null && mediaId > 0) {
+                    navigator.push(SeasonalAnimeDetailScreen(mediaId))
+                }
+            },
             onTogglePrivate = screenModel::togglePrivate,
         )
     }
@@ -346,6 +355,7 @@ data class TrackInfoDialogHomeScreen(
 }
 
 private data class TrackStatusSelectorScreen(
+    private val mangaId: Long,
     private val track: Track,
     private val serviceId: Long,
 ) : Screen() {
@@ -369,6 +379,15 @@ private data class TrackStatusSelectorScreen(
                 navigator.pop()
             },
             onDismissRequest = navigator::pop,
+            onRemove = {
+                navigator.replace(
+                    TrackerRemoveScreen(
+                        mangaId = mangaId,
+                        track = track,
+                        serviceId = serviceId,
+                    ),
+                )
+            },
         )
     }
 
@@ -831,7 +850,8 @@ private data class TrackerRemoveScreen(
             )
         }
         val serviceName = screenModel.getName()
-        var removeRemoteTrack by remember { mutableStateOf(false) }
+        val context = LocalContext.current
+        var removeRemoteTrack by remember { mutableStateOf(true) }
         AlertDialogContent(
             modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars),
             icon = {
@@ -876,8 +896,10 @@ private data class TrackerRemoveScreen(
                     }
                     FilledTonalButton(
                         onClick = {
+                            val deleteRemote = removeRemoteTrack && screenModel.isDeletable()
                             screenModel.unregisterTracking(serviceId)
-                            if (removeRemoteTrack) screenModel.deleteMangaFromService()
+                            if (deleteRemote) screenModel.deleteMangaFromService()
+                            context.toast(context.stringResource(AMR.strings.track_delete_success, serviceName))
                             navigator.pop()
                         },
                         colors = ButtonDefaults.filledTonalButtonColors(

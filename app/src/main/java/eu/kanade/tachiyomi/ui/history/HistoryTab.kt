@@ -112,6 +112,16 @@ data object HistoryTab : Tab {
             hasActiveFilters = state.hasActiveFilters,
             usePanoramaCover = usePanoramaCover,
             // KMK <--
+            // ANK -->
+            navigateUp = if (navigator.canPop) {
+                {
+                    navigator.pop()
+                    Unit
+                }
+            } else {
+                null
+            },
+            // ANK <--
         )
 
         val onDismissRequest = { screenModel.setDialog(null) }

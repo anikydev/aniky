@@ -3,10 +3,13 @@ package eu.kanade.presentation.manga
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -17,23 +20,30 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallExtendedFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.runtime.Composable
@@ -61,6 +71,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -91,17 +104,24 @@ import eu.kanade.presentation.manga.components.NextEpisodeAiringListItem
 import eu.kanade.presentation.manga.components.OutlinedButtonWithArrow
 import eu.kanade.presentation.manga.components.RelatedMangasRow
 import eu.kanade.presentation.util.formatChapterNumber
+import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.animesource.model.FetchType
 import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.data.download.model.Download
+import eu.kanade.tachiyomi.data.track.anilist.dto.ALAnimeDetails
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.getNameForMangaInfo
 import eu.kanade.tachiyomi.source.isIncognitoModeEnabled
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.ui.anilist.anilistScoreText
+import eu.kanade.tachiyomi.ui.anilist.anilistStatusLabel
 import eu.kanade.tachiyomi.ui.anime.AnimeSeasonItem
+import eu.kanade.tachiyomi.ui.browse.seasonal.AnimeRelationsRow
+import eu.kanade.tachiyomi.ui.browse.seasonal.TrailerPlayerSheet
 import eu.kanade.tachiyomi.ui.manga.ChapterList
 import eu.kanade.tachiyomi.ui.manga.MangaScreenModel
 import eu.kanade.tachiyomi.ui.manga.MergedMangaData
+import eu.kanade.tachiyomi.util.chapter.getNextUnread
 import eu.kanade.tachiyomi.util.system.copyToClipboard
 import exh.source.MERGED_SOURCE_ID
 import kotlinx.coroutines.delay
@@ -115,6 +135,7 @@ import tachiyomi.domain.manga.model.MangaCover
 import tachiyomi.domain.source.model.StubSource
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.aniyomi.AYMR
+import tachiyomi.i18n.ank.AMR
 import tachiyomi.i18n.kmk.KMR
 import tachiyomi.presentation.core.components.FastScrollIrregularLazyVerticalGrid
 import tachiyomi.presentation.core.components.Scroller.EXACT_HEIGHT_KEY_PREFIX
@@ -218,6 +239,7 @@ fun MangaScreen(
     onSeasonClicked: (SeasonAnime) -> Unit,
     onContinueWatchingClicked: ((SeasonAnime) -> Unit)?,
     // <-- AY
+    onRelationClick: (Long) -> Unit = {},
 ) {
     val context = LocalContext.current
     val onCopyTagToClipboard: (tag: String) -> Unit = {
@@ -225,6 +247,16 @@ fun MangaScreen(
             context.copyToClipboard(it, it)
         }
     }
+    // ANK -->
+    var activeTrailerId by remember { mutableStateOf<String?>(null) }
+    activeTrailerId?.let { trailerId ->
+        TrailerPlayerSheet(
+            trailerId = trailerId,
+            title = state.manga.title,
+            onDismissRequest = { activeTrailerId = null },
+        )
+    }
+    // ANK <--
 
     if (!isTabletUi) {
         MangaScreenSmallImpl(
@@ -295,6 +327,10 @@ fun MangaScreen(
             onSeasonClicked = onSeasonClicked,
             onClickContinueWatching = onContinueWatchingClicked,
             // <-- AY
+            onRelationClick = onRelationClick,
+            // ANK -->
+            onWatchTrailer = { activeTrailerId = it },
+            // ANK <--
         )
     } else {
         MangaScreenLargeImpl(
@@ -365,6 +401,10 @@ fun MangaScreen(
             onSeasonClicked = onSeasonClicked,
             onClickContinueWatching = onContinueWatchingClicked,
             // <-- AY
+            onRelationClick = onRelationClick,
+            // ANK -->
+            onWatchTrailer = { activeTrailerId = it },
+            // ANK <--
         )
     }
 }
@@ -454,6 +494,10 @@ private fun MangaScreenSmallImpl(
     onSeasonClicked: (SeasonAnime) -> Unit,
     onClickContinueWatching: ((SeasonAnime) -> Unit)?,
     // <-- AY
+    onRelationClick: (Long) -> Unit = {},
+    // ANK -->
+    onWatchTrailer: (String) -> Unit = {},
+    // ANK <--
 ) {
     // AY -->
     val density = LocalDensity.current
@@ -469,6 +513,18 @@ private fun MangaScreenSmallImpl(
     val seasons = remember(state) { state.processedSeasons }
     // <-- AY
     val listItem = remember(state) { state.chapterListItems }
+    // ANK -->
+    val episodeChunks = remember(chapters) { buildEpisodeRangeChunks(chapters) }
+    var selectedChunkIndex by remember(state.manga.id) { mutableIntStateOf(-1) }
+    val filteredListItem = remember(listItem, episodeChunks, selectedChunkIndex) {
+        if (selectedChunkIndex in episodeChunks.indices) {
+            val allowedIds = episodeChunks[selectedChunkIndex].chapterIds
+            listItem.filter { it is ChapterList.Item && it.id in allowedIds }
+        } else {
+            listItem
+        }
+    }
+    // ANK <--
 
     val isAnySelected by remember {
         derivedStateOf {
@@ -584,16 +640,11 @@ private fun MangaScreenSmallImpl(
                 val isFABVisible = remember(chapters) {
                     chapters.fastAny { !it.chapter.read } && !isAnySelected
                 }
-                val isReading = remember(state.chapters) {
-                    state.chapters.fastAny { it.chapter.read }
-                }
-                val textRes = if (isReading) {
-                    MR.strings.action_resume
-                } else {
-                    MR.strings.action_start
-                }
+                // ANK -->
+                val fabLabel = rememberNextEpisodeFabLabel(state)
+                // ANK <--
                 SmallExtendedFloatingActionButton(
-                    text = { Text(text = stringResource(textRes)) },
+                    text = { Text(text = fabLabel) },
                     icon = { Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = null) },
                     onClick = onContinueReading,
                     expanded = chapterListState.shouldExpandFAB(),
@@ -709,28 +760,37 @@ private fun MangaScreenSmallImpl(
                         span = { GridItemSpan(maxLineSpan) },
                         // <-- AY
                     ) {
-                        MangaActionRow(
-                            favorite = state.manga.favorite,
-                            trackingCount = state.trackingCount,
-                            nextUpdate = nextUpdate,
-                            isUserIntervalMode = state.manga.fetchInterval < 0,
-                            onAddToLibraryClicked = onAddToLibraryClicked,
-                            onWebViewClicked = onWebViewClicked,
-                            onWebViewLongClicked = onWebViewLongClicked,
-                            onTrackingClicked = onTrackingClicked,
-                            onEditIntervalClicked = onEditIntervalClicked,
-                            onEditCategory = onEditCategoryClicked,
-                            // SY -->
-                            onMergeClicked = onMergeClicked.takeUnless { state.showMergeInOverflow },
-                            // SY <--
-                            // KMK -->
-                            status = state.manga.status,
-                            interval = state.manga.fetchInterval,
-                            // KMK <--
-                            // AY -->
-                            modifier = Modifier.ignorePadding(offsetGridPaddingPx),
-                            // <-- AY
-                        )
+                        Column(modifier = Modifier.ignorePadding(offsetGridPaddingPx)) {
+                            MangaActionRow(
+                                favorite = state.manga.favorite,
+                                trackingCount = state.trackingCount,
+                                nextUpdate = nextUpdate,
+                                isUserIntervalMode = state.manga.fetchInterval < 0,
+                                onAddToLibraryClicked = onAddToLibraryClicked,
+                                onWebViewClicked = onWebViewClicked,
+                                onWebViewLongClicked = onWebViewLongClicked,
+                                onTrackingClicked = onTrackingClicked,
+                                onEditIntervalClicked = onEditIntervalClicked,
+                                onEditCategory = onEditCategoryClicked,
+                                // SY -->
+                                onMergeClicked = onMergeClicked.takeUnless { state.showMergeInOverflow },
+                                // SY <--
+                                // KMK -->
+                                status = state.manga.status,
+                                interval = state.manga.fetchInterval,
+                                // KMK <--
+                            )
+                            // ANK -->
+                            if (state.anilistMediaId != null || state.anilistDetails != null) {
+                                AniListQuickAccessBar(
+                                    mediaId = state.anilistMediaId,
+                                    details = state.anilistDetails,
+                                    onOpenAniListDetails = onRelationClick,
+                                    onWatchTrailer = onWatchTrailer,
+                                )
+                            }
+                            // ANK <--
+                        }
                     }
 
                     item(
@@ -757,6 +817,24 @@ private fun MangaScreenSmallImpl(
                             modifier = Modifier.ignorePadding(offsetGridPaddingPx),
                             // <-- AY
                         )
+                    }
+
+                    if (state.relations.isNotEmpty()) {
+                        item(
+                            key = "relations_row",
+                            contentType = "relations_row",
+                            span = { GridItemSpan(maxLineSpan) },
+                        ) {
+                            AnimeRelationsRow(
+                                relations = state.relations,
+                                inLibraryIds = state.relationsInLibrary,
+                                onRelationClick = onRelationClick,
+                                onAddClick = { onSearch(it, true) },
+                                modifier = Modifier
+                                    .ignorePadding(offsetGridPaddingPx)
+                                    .padding(start = 16.dp, end = 16.dp, top = 8.dp),
+                            )
+                        }
                     }
 
                     // KMK -->
@@ -886,6 +964,23 @@ private fun MangaScreenSmallImpl(
                         // <-- AY
                     }
 
+                    // ANK -->
+                    if (state.manga.fetchType == FetchType.Episodes && episodeChunks.size > 1) {
+                        item(
+                            key = "episode_range_chunks",
+                            contentType = "episode_range_chunks",
+                            span = { GridItemSpan(maxLineSpan) },
+                        ) {
+                            EpisodeRangeFilterRow(
+                                chunks = episodeChunks,
+                                selectedIndex = selectedChunkIndex,
+                                onSelectIndex = { selectedChunkIndex = it },
+                                modifier = Modifier.ignorePadding(offsetGridPaddingPx),
+                            )
+                        }
+                    }
+                    // ANK <--
+
                     // AY -->
                     when (state.manga.fetchType) {
                         FetchType.Seasons -> {
@@ -908,7 +1003,7 @@ private fun MangaScreenSmallImpl(
                                     span = { GridItemSpan(maxLineSpan) },
                                 ) {
                                     // Handles the second by second countdown
-                                    var timer by remember { mutableLongStateOf(state.airingTime) }
+                                    var timer by remember(state.airingTime) { mutableLongStateOf(state.airingTime) }
                                     LaunchedEffect(key1 = timer) {
                                         if (timer > 0L) {
                                             delay(1000L)
@@ -924,7 +1019,7 @@ private fun MangaScreenSmallImpl(
                                                 AYMR.strings.display_mode_episode,
                                                 formatChapterNumber(state.airingEpisodeNumber),
                                             ),
-                                            date = formatTime(state.airingTime, useDayFormat = true),
+                                            date = formatTime(timer, useDayFormat = true),
                                             modifier = Modifier.ignorePadding(offsetGridPaddingPx),
                                         )
                                     }
@@ -939,7 +1034,7 @@ private fun MangaScreenSmallImpl(
                                 showFileSize = showFileSize,
                                 // <-- AM (FILE_SIZE)
                                 mergedData = state.mergedData,
-                                chapters = listItem,
+                                chapters = filteredListItem,
                                 isAnyChapterSelected = chapters.fastAny { it.selected },
                                 // AY -->
                                 showSummaries = state.showSummaries,
@@ -1048,6 +1143,10 @@ private fun MangaScreenLargeImpl(
     onSeasonClicked: (SeasonAnime) -> Unit,
     onClickContinueWatching: ((SeasonAnime) -> Unit)?,
     // <-- AY
+    onRelationClick: (Long) -> Unit = {},
+    // ANK -->
+    onWatchTrailer: (String) -> Unit = {},
+    // ANK <--
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val density = LocalDensity.current
@@ -1057,6 +1156,18 @@ private fun MangaScreenLargeImpl(
     val seasons = remember(state) { state.processedSeasons }
     // <-- AY
     val listItem = remember(state) { state.chapterListItems }
+    // ANK -->
+    val episodeChunks = remember(chapters) { buildEpisodeRangeChunks(chapters) }
+    var selectedChunkIndex by remember(state.manga.id) { mutableIntStateOf(-1) }
+    val filteredListItem = remember(listItem, episodeChunks, selectedChunkIndex) {
+        if (selectedChunkIndex in episodeChunks.indices) {
+            val allowedIds = episodeChunks[selectedChunkIndex].chapterIds
+            listItem.filter { it is ChapterList.Item && it.id in allowedIds }
+        } else {
+            listItem
+        }
+    }
+    // ANK <--
 
     val isAnySelected by remember {
         derivedStateOf {
@@ -1172,16 +1283,11 @@ private fun MangaScreenLargeImpl(
                 val isFABVisible = remember(chapters) {
                     chapters.fastAny { !it.chapter.read } && !isAnySelected
                 }
-                val isReading = remember(state.chapters) {
-                    state.chapters.fastAny { it.chapter.read }
-                }
-                val textRes = if (isReading) {
-                    MR.strings.action_resume
-                } else {
-                    MR.strings.action_start
-                }
+                // ANK -->
+                val fabLabel = rememberNextEpisodeFabLabel(state)
+                // ANK <--
                 SmallExtendedFloatingActionButton(
-                    text = { Text(text = stringResource(textRes)) },
+                    text = { Text(text = fabLabel) },
                     icon = { Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = null) },
                     onClick = onContinueReading,
                     expanded = chapterListState.shouldExpandFAB(),
@@ -1288,6 +1394,16 @@ private fun MangaScreenLargeImpl(
                                 interval = state.manga.fetchInterval,
                                 // KMK <--
                             )
+                            // ANK -->
+                            if (state.anilistMediaId != null || state.anilistDetails != null) {
+                                AniListQuickAccessBar(
+                                    mediaId = state.anilistMediaId,
+                                    details = state.anilistDetails,
+                                    onOpenAniListDetails = onRelationClick,
+                                    onWatchTrailer = onWatchTrailer,
+                                )
+                            }
+                            // ANK <--
                             ExpandableMangaDescription(
                                 defaultExpandState = true,
                                 description = state.manga.description,
@@ -1300,6 +1416,16 @@ private fun MangaScreenLargeImpl(
                                 doSearch = onSearch,
                                 // SY <--
                             )
+
+                            if (state.relations.isNotEmpty()) {
+                                AnimeRelationsRow(
+                                    relations = state.relations,
+                                    inLibraryIds = state.relationsInLibrary,
+                                    onRelationClick = onRelationClick,
+                                    onAddClick = { onSearch(it, true) },
+                                    modifier = Modifier.padding(top = 8.dp),
+                                )
+                            }
                             // SY -->
                             if (!state.showRecommendationsInOverflow || state.showMergeWithAnother) {
                                 MangaInfoButtons(
@@ -1430,6 +1556,23 @@ private fun MangaScreenLargeImpl(
                                 // <-- AY
                             }
 
+                            // ANK -->
+                            if (state.manga.fetchType == FetchType.Episodes && episodeChunks.size > 1) {
+                                item(
+                                    key = "episode_range_chunks",
+                                    contentType = "episode_range_chunks",
+                                    span = { GridItemSpan(maxLineSpan) },
+                                ) {
+                                    EpisodeRangeFilterRow(
+                                        chunks = episodeChunks,
+                                        selectedIndex = selectedChunkIndex,
+                                        onSelectIndex = { selectedChunkIndex = it },
+                                        modifier = Modifier.ignorePadding(offsetGridPaddingPx),
+                                    )
+                                }
+                            }
+                            // ANK <--
+
                             // AY -->
                             when (state.manga.fetchType) {
                                 FetchType.Seasons -> {
@@ -1455,7 +1598,7 @@ private fun MangaScreenLargeImpl(
                                             // ANK <--
                                         ) {
                                             // Handles the second by second countdown
-                                            var timer by remember { mutableLongStateOf(state.airingTime) }
+                                            var timer by remember(state.airingTime) { mutableLongStateOf(state.airingTime) }
                                             LaunchedEffect(key1 = timer) {
                                                 if (timer > 0L) {
                                                     delay(1000L)
@@ -1471,7 +1614,7 @@ private fun MangaScreenLargeImpl(
                                                         AYMR.strings.display_mode_episode,
                                                         formatChapterNumber(state.airingEpisodeNumber),
                                                     ),
-                                                    date = formatTime(state.airingTime, useDayFormat = true),
+                                                    date = formatTime(timer, useDayFormat = true),
                                                     modifier = Modifier.ignorePadding(offsetGridPaddingPx),
                                                 )
                                             }
@@ -1486,7 +1629,7 @@ private fun MangaScreenLargeImpl(
                                         showFileSize = showFileSize,
                                         // <-- AM (FILE_SIZE)
                                         mergedData = state.mergedData,
-                                        chapters = listItem,
+                                        chapters = filteredListItem,
                                         isAnyChapterSelected = chapters.fastAny { it.selected },
                                         // AY -->
                                         showSummaries = state.showSummaries,
@@ -1751,6 +1894,171 @@ private fun LazyGridScope.sharedChapterItems(
     }
 }
 
+// ANK -->
+@Composable
+private fun AniListQuickAccessBar(
+    mediaId: Long?,
+    details: ALAnimeDetails?,
+    onOpenAniListDetails: (Long) -> Unit,
+    onWatchTrailer: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val resolvedMediaId = mediaId ?: details?.id ?: return
+    val youtubeTrailerId = details?.trailer
+        ?.takeIf { it.site.equals("youtube", ignoreCase = true) && !it.id.isNullOrBlank() }
+        ?.id
+
+    val statusLabel = details?.mediaListEntry?.status?.let { anilistStatusLabel(it) }
+    val statusText = remember(details, statusLabel) {
+        if (details == null) {
+            null
+        } else {
+            buildString {
+                append("AniList")
+                details.averageScore?.takeIf { it > 0 }?.let { score ->
+                    append(" • ★ ")
+                    append(anilistScoreText(score))
+                }
+                statusLabel?.let { label ->
+                    append(" • ")
+                    append(label)
+                }
+                details.mediaListEntry?.progress?.takeIf { it > 0 }?.let { progress ->
+                    val total = details.episodes?.takeIf { it > 0 }
+                    if (total != null) {
+                        append(" ($progress/$total)")
+                    } else {
+                        append(" (Ep $progress)")
+                    }
+                }
+            }
+        }
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(
+            onClick = { onOpenAniListDetails(resolvedMediaId) },
+            shape = RoundedCornerShape(10.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.75f),
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.weight(1f, fill = false),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_anilist),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(15.dp),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = statusText ?: stringResource(AMR.strings.anilist_open_details),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+
+        if (youtubeTrailerId != null) {
+            Surface(
+                onClick = { onWatchTrailer(youtubeTrailerId) },
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(15.dp),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = stringResource(AMR.strings.anilist_watch_trailer),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private data class EpisodeRangeChunk(
+    val label: String,
+    val chapterIds: Set<Long>,
+)
+
+private fun buildEpisodeRangeChunks(chapters: List<ChapterList.Item>, chunkSize: Int = 50): List<EpisodeRangeChunk> {
+    if (chapters.size <= chunkSize) return emptyList()
+    val sortedAscending = chapters.sortedBy { it.chapter.chapterNumber }
+    return sortedAscending.chunked(chunkSize).mapIndexed { index, group ->
+        val firstNum = group.first().chapter.chapterNumber.takeIf { it >= 0 }?.let { formatChapterNumber(it) }
+            ?: ((index * chunkSize) + 1).toString()
+        val lastNum = group.last().chapter.chapterNumber.takeIf { it >= 0 }?.let { formatChapterNumber(it) }
+            ?: ((index * chunkSize) + group.size).toString()
+        EpisodeRangeChunk(
+            label = "$firstNum–$lastNum",
+            chapterIds = group.mapTo(HashSet(group.size)) { it.id },
+        )
+    }
+}
+
+@Composable
+private fun EpisodeRangeFilterRow(
+    chunks: List<EpisodeRangeChunk>,
+    selectedIndex: Int,
+    onSelectIndex: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item(key = "range_all") {
+            FilterChip(
+                selected = selectedIndex == -1,
+                onClick = { onSelectIndex(-1) },
+                label = {
+                    Text(
+                        text = stringResource(AMR.strings.episode_range_all),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                },
+            )
+        }
+        itemsIndexed(chunks, key = { index, _ -> "range_$index" }) { index, chunk ->
+            FilterChip(
+                selected = selectedIndex == index,
+                onClick = { onSelectIndex(if (selectedIndex == index) -1 else index) },
+                label = {
+                    Text(
+                        text = chunk.label,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                },
+            )
+        }
+    }
+}
+// ANK <--
+
 private fun onChapterItemClick(
     chapterItem: ChapterList.Item,
     isAnyChapterSelected: Boolean,
@@ -1764,10 +2072,11 @@ private fun onChapterItemClick(
     }
 }
 
+@Composable
 private fun formatTime(milliseconds: Long, useDayFormat: Boolean = false): String {
     return if (useDayFormat) {
-        String.format(
-            "Airing in %02dd %02dh %02dm %02ds",
+        stringResource(
+            AMR.strings.manga_airing_in,
             TimeUnit.MILLISECONDS.toDays(milliseconds),
             TimeUnit.MILLISECONDS.toHours(milliseconds) -
                 TimeUnit.DAYS.toHours(TimeUnit.MILLISECONDS.toDays(milliseconds)),
@@ -1810,3 +2119,25 @@ private fun Modifier.ignorePadding(gridPadding: Int) = layout { measurable, cons
 // AM (FILE_SIZE) -->
 private val downloadProvider: DownloadProvider by injectLazy()
 // <-- AM (FILE_SIZE)
+
+// ANK -->
+@Composable
+private fun rememberNextEpisodeFabLabel(state: MangaScreenModel.State.Success): String {
+    val isReading = remember(state.chapters) {
+        state.chapters.fastAny { it.chapter.read }
+    }
+    val nextEpisodeNumber = remember(state.chapters, state.manga) {
+        state.chapters.getNextUnread(state.manga)
+            ?.takeIf { it.isRecognizedNumber }
+            ?.let { formatChapterNumber(it.chapterNumber) }
+    }
+    return when {
+        nextEpisodeNumber != null && isReading ->
+            stringResource(AMR.strings.action_resume_episode, nextEpisodeNumber)
+        nextEpisodeNumber != null ->
+            stringResource(AMR.strings.action_start_episode, nextEpisodeNumber)
+        isReading -> stringResource(MR.strings.action_resume)
+        else -> stringResource(MR.strings.action_start)
+    }
+}
+// ANK <--
