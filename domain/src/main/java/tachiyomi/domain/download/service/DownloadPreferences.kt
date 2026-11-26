@@ -19,6 +19,14 @@ class DownloadPreferences(
     )
     // <-- AM
 
+    // ANK -->
+    fun useInternalDownloader() = preferenceStore.getBoolean("pref_download_use_internal", true)
+
+    fun downloadThreads() = preferenceStore.getInt("pref_download_threads", 4)
+
+    fun downloadSpeedLimit() = preferenceStore.getInt("pref_download_speed", 0)
+    // <-- ANK
+
     fun useExternalDownloader() = preferenceStore.getBoolean("use_external_downloader", false)
 
     fun externalDownloaderSelection() = preferenceStore.getString(

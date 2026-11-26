@@ -422,6 +422,9 @@ dependencies {
 
     // ANK -->
     implementation(libs.android.youtube.player)
+    implementation(aniyomilibs.mpd.parser)
+    implementation(aniyomilibs.stax.api)
+    implementation(aniyomilibs.stax2.api)
     // <-- ANK
 }
 

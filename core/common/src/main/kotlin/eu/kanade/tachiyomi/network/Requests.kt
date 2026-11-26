@@ -151,3 +151,23 @@ suspend fun OkHttpClient.post(
     return newCall(POST(url, headers, body, cache)).awaitSuccess()
 }
 // <-- AY
+
+// ANK -->
+fun HEAD(
+    url: String,
+    headers: Headers = DEFAULT_HEADERS,
+): Request {
+    return Request.Builder()
+        .url(url)
+        .headers(headers)
+        .head()
+        .build()
+}
+
+suspend fun OkHttpClient.head(
+    url: String,
+    headers: Headers = DEFAULT_HEADERS,
+): Response {
+    return newCall(HEAD(url, headers)).await()
+}
+// <-- ANK

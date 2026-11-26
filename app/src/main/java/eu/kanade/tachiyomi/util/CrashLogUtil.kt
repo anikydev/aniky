@@ -9,6 +9,7 @@ import eu.kanade.tachiyomi.util.system.WebViewUtil
 import eu.kanade.tachiyomi.util.system.createFileInCacheDir
 import eu.kanade.tachiyomi.util.system.toShareIntent
 import eu.kanade.tachiyomi.util.system.toast
+import `is`.xyz.mpv.Utils
 import tachiyomi.core.common.util.lang.withNonCancellableContext
 import tachiyomi.core.common.util.lang.withUIContext
 import uy.kohesive.injekt.Injekt
@@ -50,16 +51,11 @@ class CrashLogUtil(
             Device name: ${Build.DEVICE} (${Build.PRODUCT})
             Device model: ${Build.MODEL}
             WebView: ${WebViewUtil.getVersion(context)}
-            MPV version: 6764488
-            Libplacebo version: v7.349.0
-            FFmpeg version: n7.1
+            MPV version: ${Utils.VERSIONS.mpv}
+            Libplacebo version: ${Utils.VERSIONS.libPlacebo}
+            FFmpeg version: n9.0.2
             Current time: ${OffsetDateTime.now(ZoneId.systemDefault())}
         """.trimIndent()
-        // TODO: Use this again (from aniyomi-mpv-lib 1.17.n onwards):
-
-        //    MPV version: ${Utils.VERSIONS.mpv}
-        //    Libplacebo version: ${Utils.VERSIONS.libPlacebo}
-        //    FFmpeg version: ${Utils.VERSIONS.ffmpeg}
     }
 
     private fun getExtensionsInfo(): String? {

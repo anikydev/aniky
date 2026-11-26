@@ -553,5 +553,10 @@
     <string name="anilist_va_prefix">VA: %1$s</string>
     <string name="player_double_speed">2× Speed</string>
     <string name="manga_airing_in">Airing in %02dd %02dh %02dm %02ds</string>
+    <string name="pref_download_use_internal">Use internal downloader</string>
+    <string name="pref_download_threads">Download threads</string>
+    <string name="pref_download_speed_limit">Episode download speed limit</string>
+    <string name="pref_download_speed_limit_value">%1$d KB/s</string>
+    <string name="pref_download_speed_limit_unit">KB/s</string>
 
 </resources>

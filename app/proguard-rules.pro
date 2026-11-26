@@ -332,4 +332,7 @@
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }
+
+# Required by mpd-parser
+-keep class io.lindstrom.mpd.** { *; }
 # <-- ANK

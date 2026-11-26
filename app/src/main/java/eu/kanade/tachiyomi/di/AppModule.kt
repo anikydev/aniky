@@ -19,6 +19,11 @@ import eu.kanade.tachiyomi.data.connections.ConnectionsManager
 import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
+import eu.kanade.tachiyomi.data.download.downloader.DashDownloader
+import eu.kanade.tachiyomi.data.download.downloader.DirectDownloader
+import eu.kanade.tachiyomi.data.download.downloader.HlsDownloader
+import eu.kanade.tachiyomi.data.download.downloader.HttpDownloader
+import eu.kanade.tachiyomi.data.download.downloader.VideoDownloader
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.sync.service.GoogleDriveService
 import eu.kanade.tachiyomi.data.track.TrackerManager
@@ -168,6 +173,13 @@ class AppModule(val app: Application) : InjektModule {
         addSingletonFactory { DownloadProvider(app) }
         addSingletonFactory { DownloadManager(app) }
         addSingletonFactory { DownloadCache(app) }
+        // ANK -->
+        addSingletonFactory { HttpDownloader() }
+        addSingletonFactory { DirectDownloader(get()) }
+        addSingletonFactory { HlsDownloader(app, get()) }
+        addSingletonFactory { DashDownloader(app, get(), get()) }
+        addSingletonFactory { VideoDownloader(app, get(), get(), get(), get(), get()) }
+        // <-- ANK
 
         addSingletonFactory { TrackerManager() }
         addSingletonFactory { DelayedTrackingStore(app) }

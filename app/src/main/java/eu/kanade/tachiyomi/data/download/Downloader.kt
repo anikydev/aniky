@@ -15,6 +15,7 @@ import com.hippo.unifile.UniFile
 import eu.kanade.tachiyomi.animesource.UnmeteredSource
 import eu.kanade.tachiyomi.animesource.model.Track
 import eu.kanade.tachiyomi.animesource.model.Video
+import eu.kanade.tachiyomi.data.download.downloader.VideoDownloader
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.library.LibraryUpdateNotifier
 import eu.kanade.tachiyomi.data.notification.NotificationHandler
@@ -94,6 +95,9 @@ class Downloader(
     private val cache: DownloadCache,
     private val sourceManager: SourceManager = Injekt.get(),
     private val downloadPreferences: DownloadPreferences = Injekt.get(),
+    // ANK -->
+    private val videoDownloader: VideoDownloader = Injekt.get(),
+    // <-- ANK
 ) {
     /**
      * Store for persisting downloads across restarts.
@@ -514,6 +518,25 @@ class Downloader(
         tmpDir: UniFile,
         filename: String,
     ): UniFile {
+        // ANK -->
+        if (downloadPreferences.useInternalDownloader().get() && !isTor(download.video!!)) {
+            return flow {
+                emit(videoDownloader.download(download, tmpDir, filename, isTorrent = false))
+            }
+                // Retry 3 times, waiting 2, 4 and 8 seconds between attempts.
+                .retryWhen { _, attempt ->
+                    if (attempt < 3) {
+                        delay((2L shl attempt.toInt()) * 1000)
+                        true
+                    } else {
+                        false
+                    }
+                }
+                .flowOn(Dispatchers.IO)
+                .first()
+        }
+        // <-- ANK
+
         return flow {
             tmpDir.findFile("$filename.tmp")?.delete()
             val videoFile = tmpDir.createFile("$filename.tmp")!!
@@ -610,7 +633,7 @@ class Downloader(
             val session = FFmpegKit.executeWithArgumentsAsync(
                 ffmpegOptions,
                 {
-                    if (it.returnCode.isValueSuccess) {
+                    if (it.getReturnCode()?.isValueSuccess() == true) {
                         tmpDir.findFile("$filename.tmp")?.apply {
                             renameTo("$filename.mkv")
                         }
@@ -772,10 +795,10 @@ class Downloader(
 
         suspendCancellableCoroutine { continuation ->
             val session = FFprobeKit.executeWithArgumentsAsync(ffprobeCommand) {
-                if (it.returnCode.isValueSuccess) {
+                if (it.getReturnCode()?.isValueSuccess() == true) {
                     continuation.resume(it)
                 } else {
-                    continuation.resumeWithException(Exception(it.output))
+                    continuation.resumeWithException(Exception(it.getOutput()))
                 }
             }
             continuation.invokeOnCancellation { session.cancel() }
