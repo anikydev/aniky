@@ -1,5 +1,6 @@
 package eu.kanade.presentation.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -262,8 +264,27 @@ fun AppBarActions(
     }
     // KMK <--
 
-    val overflowActions = actions.filterIsInstance<AppBar.OverflowAction>()
-    if (overflowActions.isNotEmpty()) {
+    // ANK -->
+    val overflowItems = remember(actions) {
+        buildList {
+            for (action in actions) {
+                when (action) {
+                    is AppBar.OverflowAction -> add(action)
+                    is AppBar.OverflowDivider -> {
+                        if (isNotEmpty() && last() !is AppBar.OverflowDivider) {
+                            add(action)
+                        }
+                    }
+                    else -> Unit
+                }
+            }
+            while (lastOrNull() is AppBar.OverflowDivider) {
+                removeAt(lastIndex)
+            }
+        }
+    }
+    if (overflowItems.isNotEmpty()) {
+        // ANK <--
         TooltipBox(
             positionProvider = rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
             tooltip = {
@@ -288,15 +309,30 @@ fun AppBarActions(
             expanded = showMenu,
             onDismissRequest = { showMenu = false },
         ) {
-            overflowActions.map {
-                DropdownMenuItem(
-                    onClick = {
-                        it.onClick()
-                        showMenu = false
-                    },
-                    text = { Text(it.title, fontWeight = FontWeight.Normal) },
-                )
+            // ANK -->
+            overflowItems.forEach { item ->
+                when (item) {
+                    is AppBar.OverflowAction -> DropdownMenuItem(
+                        onClick = {
+                            item.onClick()
+                            showMenu = false
+                        },
+                        text = { Text(item.title, fontWeight = FontWeight.Normal) },
+                        leadingIcon = item.icon?.let { icon ->
+                            {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = item.iconTint ?: LocalContentColor.current,
+                                )
+                            }
+                        },
+                    )
+                    is AppBar.OverflowDivider -> HorizontalDivider()
+                    else -> Unit
+                }
             }
+            // ANK <--
         }
     }
 }
@@ -323,6 +359,10 @@ fun SearchToolbar(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
 ) {
     val focusRequester = remember { FocusRequester() }
+
+    // ANK -->
+    BackHandler(enabled = searchQuery != null, onBack = onClickCloseSearch)
+    // ANK <--
 
     AppBar(
         modifier = modifier,
@@ -480,5 +520,13 @@ sealed interface AppBar {
     data class OverflowAction(
         val title: String,
         val onClick: () -> Unit,
+        // ANK -->
+        val icon: ImageVector? = null,
+        val iconTint: Color? = null,
+        // ANK <--
     ) : AppBarAction
+
+    // ANK -->
+    data object OverflowDivider : AppBarAction
+    // ANK <--
 }

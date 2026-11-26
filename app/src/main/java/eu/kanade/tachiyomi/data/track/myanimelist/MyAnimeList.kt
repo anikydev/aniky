@@ -70,6 +70,12 @@ class MyAnimeList(id: Long) : BaseTracker(id, "MyAnimeList"), DeletableTracker {
     }
 
     private suspend fun add(track: Track): Track {
+        if (track.status == 0L) {
+            track.status = PLAN_TO_WATCH
+        }
+        if (track.score <= 0.0) {
+            track.score = 0.0
+        }
         return api.updateItem(track)
     }
 
@@ -141,16 +147,20 @@ class MyAnimeList(id: Long) : BaseTracker(id, "MyAnimeList"), DeletableTracker {
         try {
             val oauth = api.getAccessToken(authCode)
             interceptor.setAuth(oauth)
+            clearAuthExpired()
             val username = api.getCurrentUser()
             saveCredentials(username, oauth.accessToken)
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
             logout()
+            throw e
         }
     }
 
     override fun logout() {
         super.logout()
         trackPreferences.trackToken(this).delete()
+        trackPreferences.pendingPkceCodeVerifier.delete()
+        clearAuthExpired()
         interceptor.setAuth(null)
     }
 
@@ -164,6 +174,10 @@ class MyAnimeList(id: Long) : BaseTracker(id, "MyAnimeList"), DeletableTracker {
 
     fun setAuthExpired() {
         trackPreferences.trackAuthExpired(this).set(true)
+    }
+
+    fun clearAuthExpired() {
+        trackPreferences.trackAuthExpired(this).set(false)
     }
 
     fun saveOAuth(oAuth: MALOAuth?) {

@@ -37,22 +37,12 @@ class GetApplicationRelease(
                     )
             }
 
+        lastChecked.set(now.toEpochMilli())
+
         val latest = releases.getLatest() ?: return Result.NoNewUpdate
         // KMK <--
 
-        lastChecked.set(now.toEpochMilli())
-
-        // Check if latest version is different from current version
-        val isNewVersion = isNewVersion(
-            isPreview = arguments.isPreview,
-            commitCount = arguments.commitCount,
-            versionName = arguments.versionName,
-            versionTag = latest.version,
-        )
-        return when {
-            isNewVersion -> Result.NewUpdate(latest)
-            else -> Result.NoNewUpdate
-        }
+        return Result.NewUpdate(latest)
     }
 
     // KMK -->
@@ -80,25 +70,25 @@ class GetApplicationRelease(
         versionName: String,
         versionTag: String,
     ): Boolean {
-        // Removes prefixes like "r" or "v"
-        val newVersion = versionTag.replace("[^\\d.]".toRegex(), "")
+        // Removes suffixes like "-8949" and prefixes like "r" or "v"
+        val cleanNew = versionTag.substringBefore("-").replace("[^\\d.]".toRegex(), "")
         return if (isPreview) {
-            // Preview builds: based on releases in "komikku-app/komikku-preview" repo
-            // tagged as something like "r1234"
-            newVersion.toInt() > commitCount
+            // Preview builds: based on releases tagged as something like "r1234"
+            (cleanNew.toIntOrNull() ?: 0) > commitCount
         } else {
-            // Release builds: based on releases in "komikku-app/komikku" repo
-            // tagged as something like "v0.1.2"
-            val oldVersion = versionName.replace("[^\\d.]".toRegex(), "")
+            // Release builds: based on releases tagged as something like "v1.0.0"
+            val cleanOld = versionName.substringBefore("-").replace("[^\\d.]".toRegex(), "")
 
-            val newSemVer = newVersion.split(".").map { it.toInt() }
-            val oldSemVer = oldVersion.split(".").map { it.toInt() }
+            val newSemVer = cleanNew.split(".").mapNotNull { it.toIntOrNull() }
+            val oldSemVer = cleanOld.split(".").mapNotNull { it.toIntOrNull() }
+            if (newSemVer.isEmpty() || oldSemVer.isEmpty()) return false
 
-            oldSemVer.mapIndexed { index, i ->
-                if (newSemVer[index] > i) {
-                    return true
-                }
-                if (newSemVer[index] < i) return false
+            val maxLen = maxOf(newSemVer.size, oldSemVer.size)
+            for (index in 0 until maxLen) {
+                val newPart = newSemVer.getOrElse(index) { 0 }
+                val oldPart = oldSemVer.getOrElse(index) { 0 }
+                if (newPart > oldPart) return true
+                if (newPart < oldPart) return false
             }
 
             false

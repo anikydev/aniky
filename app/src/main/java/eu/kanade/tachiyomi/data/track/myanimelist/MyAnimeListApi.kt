@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.data.track.myanimelist
 
 import android.net.Uri
 import androidx.core.net.toUri
+import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.tachiyomi.data.database.models.Track
 import eu.kanade.tachiyomi.data.track.model.TrackMangaMetadata
 import eu.kanade.tachiyomi.data.track.model.TrackSearch
@@ -14,7 +15,9 @@ import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALSearchResult
 import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALUser
 import eu.kanade.tachiyomi.network.DELETE
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.network.POST
+import eu.kanade.tachiyomi.network.await
 import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.network.parseAs
 import eu.kanade.tachiyomi.util.PkceUtil
@@ -42,10 +45,13 @@ class MyAnimeListApi(
 
     suspend fun getAccessToken(authCode: String): MALOAuth {
         return withIOContext {
+            val verifier = trackPreferences.pendingPkceCodeVerifier.get().ifEmpty { codeVerifier }
+            trackPreferences.pendingPkceCodeVerifier.delete()
+            codeVerifier = ""
             val formBody: RequestBody = FormBody.Builder()
                 .add("client_id", CLIENT_ID)
                 .add("code", authCode)
-                .add("code_verifier", codeVerifier)
+                .add("code_verifier", verifier)
                 .add("grant_type", "authorization_code")
                 .build()
             with(json) {
@@ -107,7 +113,7 @@ class MyAnimeListApi(
     suspend fun updateItem(track: Track): Track {
         return withIOContext {
             val formBodyBuilder = FormBody.Builder()
-                .add("status", track.toMyAnimeListStatus() ?: "watching")
+                .add("status", track.toMyAnimeListStatus() ?: "plan_to_watch")
                 .add("is_rewatching", (track.status == MyAnimeList.REWATCHING).toString())
                 .add("score", track.score.toString())
                 .add("num_watched_episodes", track.last_episode_seen.toInt().toString())
@@ -133,9 +139,14 @@ class MyAnimeListApi(
 
     suspend fun deleteItem(track: DomainTrack) {
         withIOContext {
-            authClient
+            val response = authClient
                 .newCall(DELETE(animeUrl(track.remoteId).toString()))
-                .awaitSuccess()
+                .await()
+            if (!response.isSuccessful && response.code != 404) {
+                response.close()
+                throw HttpException(response.code)
+            }
+            response.close()
         }
     }
 
@@ -268,7 +279,7 @@ class MyAnimeListApi(
     }
 
     companion object {
-        private const val CLIENT_ID = "6b877c0e95a0aef62a579c7c9ac088d3"
+        private val CLIENT_ID: String get() = eu.kanade.tachiyomi.BuildConfig.MAL_CLIENT_ID
 
         private const val BASE_OAUTH_URL = "https://myanimelist.net/v1/oauth2"
         private const val BASE_API_URL = "https://api.myanimelist.net/v2"
@@ -278,12 +289,19 @@ class MyAnimeListApi(
 
         private const val LIST_PAGINATION_AMOUNT = 250
 
+        private val trackPreferences: TrackPreferences by injectLazy()
+
         private var codeVerifier: String = ""
 
-        fun authUrl(): Uri = "$BASE_OAUTH_URL/authorize".toUri().buildUpon()
+        fun authUrl(state: String? = null): Uri = "$BASE_OAUTH_URL/authorize".toUri().buildUpon()
             .appendQueryParameter("client_id", CLIENT_ID)
             .appendQueryParameter("code_challenge", getPkceChallengeCode())
             .appendQueryParameter("response_type", "code")
+            .apply {
+                if (!state.isNullOrEmpty()) {
+                    appendQueryParameter("state", state)
+                }
+            }
             .build()
 
         fun animeUrl(id: Long): Uri = "$BASE_API_URL/anime".toUri().buildUpon()
@@ -298,19 +316,19 @@ class MyAnimeListApi(
                 .add("grant_type", "refresh_token")
                 .build()
 
-            // Add the Authorization header manually as this particular
-            // request is called by the interceptor itself so it doesn't reach
-            // the part where the token is added automatically.
-            val headers = Headers.Builder()
-                .add("Authorization", "Bearer ${oauth.accessToken}")
-                .build()
-
-            return POST("$BASE_OAUTH_URL/token", body = formBody, headers = headers)
+            // No Authorization header on purpose: this client id is public, so the refresh
+            // authenticates with client_id + refresh_token alone. Sending the (by definition
+            // expired) bearer token along can only get the refresh itself rejected.
+            return POST("$BASE_OAUTH_URL/token", body = formBody)
         }
 
         private fun getPkceChallengeCode(): String {
-            codeVerifier = PkceUtil.generateCodeVerifier()
-            return codeVerifier
+            // Persisted, not held in memory: the app can be killed while the user is in the browser,
+            // and the token exchange on return has to send this exact verifier.
+            val verifier = PkceUtil.generateCodeVerifier()
+            codeVerifier = verifier
+            trackPreferences.pendingPkceCodeVerifier.set(verifier)
+            return verifier
         }
     }
 }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="upcoming_in_hours">
+        <item quantity="one">in 1 hour</item>
+        <item quantity="other">in %1$d hours</item>
+    </plurals>
+    <plurals name="upcoming_in_days">
+        <item quantity="one">in 1 day</item>
+        <item quantity="other">in %1$d days</item>
+    </plurals>
+    <plurals name="anilist_episodes_count">
+        <item quantity="one">%1$d ep</item>
+        <item quantity="other">%1$d eps</item>
+    </plurals>
+    <plurals name="anilist_favourites_count">
+        <item quantity="one">%1$d favourite</item>
+        <item quantity="other">%1$d favourites</item>
+    </plurals>
+</resources>

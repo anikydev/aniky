@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Anikku</string>
+    <string name="app_name" translatable="false">Aniky</string>
 
     <!-- Generic strings -->
     <string name="on">On</string>
@@ -1045,4 +1045,5 @@
     <string name="migrationListScreen.migrateDialog.cancelLabel">Cancel</string>
     <string name="migrationListScreen.progressDialog.cancelLabel">Cancel</string>
     <string name="migrationListScreen.matchWithoutChapterToast">No chapters found, this entry cannot be used for migration</string>
+
 </resources>

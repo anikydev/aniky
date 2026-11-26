@@ -34,6 +34,21 @@ class TrackPreferences(
 
     fun trackToken(tracker: Tracker) = preferenceStore.getString(Preference.privateKey("track_token_${tracker.id}"), "")
 
+    val pendingOAuthState: Preference<String> = preferenceStore.getString(
+        Preference.privateKey("pref_pending_oauth_state"),
+        "",
+    )
+
+    /**
+     * PKCE code verifier for the OAuth flow currently in the browser. It has to outlive the process:
+     * the app can be killed while the user is logging in, and the token exchange on return needs the
+     * same verifier that produced the challenge.
+     */
+    val pendingPkceCodeVerifier: Preference<String> = preferenceStore.getString(
+        Preference.privateKey("pref_pending_pkce_code_verifier"),
+        "",
+    )
+
     fun anilistScoreType() = preferenceStore.getString("anilist_score_type", Anilist.POINT_10)
 
     fun autoUpdateTrack() = preferenceStore.getBoolean("pref_auto_update_manga_sync_key", true)
@@ -57,4 +72,18 @@ class TrackPreferences(
     // KMK -->
     fun autoSyncProgressFromTrackers() = preferenceStore.getBoolean("pref_auto_sync_progress_from_trackers_key", true)
     // KMK <--
+
+    fun showAniListRelations() = preferenceStore.getBoolean(
+        "show_anilist_relations",
+        true,
+    )
+
+    fun anilistLastTab() = preferenceStore.getInt("anilist_last_tab", 0)
+
+    // ANK -->
+    fun anilistPreferredSources() = preferenceStore.getStringSet(
+        "anilist_preferred_sources",
+        emptySet(),
+    )
+    // ANK <--
 }

@@ -3,8 +3,8 @@ package tachiyomi.core.common
 object Constants {
     const val SPONSOR = "https://github.com/sponsors/cuong-tran"
 
-    const val URL_HELP = "https://anikku-app.github.io/docs/guides/troubleshooting"
-    const val URL_HELP_UPCOMING = "https://anikku-app.github.io/docs/faq/updates/upcoming"
+    const val URL_HELP = "https://github.com/anikydev/aniky#readme"
+    const val URL_HELP_UPCOMING = "https://github.com/anikydev/aniky#readme"
 
     const val ANIME_EXTRA = "anime"
 

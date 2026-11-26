@@ -92,6 +92,14 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
+-keep,includedescriptorclasses class mihon.**$$serializer { *; }
+-keepclassmembers class mihon.** {
+    *** Companion;
+}
+-keepclasseswithmembers class mihon.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+
 # Filter serializer
 -keep,includedescriptorclasses class xyz.nulldev.ts.api.http.serializer.**$$serializer { *; }
 -keepclassmembers class xyz.nulldev.ts.api.http.serializer.** {
@@ -312,3 +320,16 @@
 -dontwarn org.ietf.jgss.GSSManager
 -dontwarn org.ietf.jgss.GSSName
 -dontwarn org.ietf.jgss.Oid
+
+# ANK -->
+# Preserve android-youtube-player classes and JavaScript bridge from R8 minification
+-keep class com.pierfrancescosoffritti.androidyoutubeplayer.** { *; }
+-keepclassmembers class com.pierfrancescosoffritti.androidyoutubeplayer.** { *; }
+-dontwarn com.pierfrancescosoffritti.androidyoutubeplayer.**
+
+# Preserve WebView JavaScriptInterface annotations and methods
+-keepattributes JavascriptInterface
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+# <-- ANK

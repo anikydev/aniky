@@ -67,8 +67,6 @@ import eu.kanade.presentation.components.IndexingBannerBackgroundColor
 import eu.kanade.presentation.components.RestoringBannerBackgroundColor
 import eu.kanade.presentation.components.SyncingBannerBackgroundColor
 import eu.kanade.presentation.components.UpdatingBannerBackgroundColor
-import eu.kanade.presentation.more.settings.screen.about.AboutScreen.Companion.getReleaseNotes
-import eu.kanade.presentation.more.settings.screen.about.WhatsNewDialog
 import eu.kanade.presentation.more.settings.screen.browse.ExtensionReposScreen
 import eu.kanade.presentation.more.settings.screen.data.RestoreBackupScreen
 import eu.kanade.presentation.util.AssistContentScreen
@@ -97,13 +95,10 @@ import eu.kanade.tachiyomi.ui.home.HomeScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.more.NewUpdateScreen
 import eu.kanade.tachiyomi.ui.more.OnboardingScreen
-import eu.kanade.tachiyomi.ui.more.WhatsNewScreen
 import eu.kanade.tachiyomi.ui.player.ExternalIntents
 import eu.kanade.tachiyomi.ui.player.PlayerActivity
 import eu.kanade.tachiyomi.util.system.dpToPx
 import eu.kanade.tachiyomi.util.system.isNavigationBarNeedsScrim
-import eu.kanade.tachiyomi.util.system.isPreviewBuildType
-import eu.kanade.tachiyomi.util.system.isReleaseBuildType
 import eu.kanade.tachiyomi.util.system.toast
 import eu.kanade.tachiyomi.util.system.updaterEnabled
 import eu.kanade.tachiyomi.util.view.setComposeContent
@@ -120,11 +115,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import logcat.LogPriority
 import mihon.core.migration.Migrator
-import mihon.core.migration.Migrator.scope
 import tachiyomi.core.common.Constants
 import tachiyomi.core.common.i18n.stringResource
-import tachiyomi.core.common.preference.Preference
-import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.core.common.util.system.logcat
@@ -181,10 +173,8 @@ class MainActivity : BaseActivity() {
 
         super.onCreate(savedInstanceState)
 
-        val didMigration = if (isLaunch) {
+        if (isLaunch) {
             Migrator.awaitAndRelease()
-        } else {
-            false
         }
 
         // Do not let the launcher create a new activity http://stackoverflow.com/questions/16283079
@@ -352,58 +342,6 @@ class MainActivity : BaseActivity() {
                 CheckForUpdates()
                 ShowOnboarding()
             }
-
-            // KMK -->
-            val previewLastVersion = Injekt.get<PreferenceStore>().getInt(
-                Preference.appStateKey("preview_last_version_code"),
-                0,
-            )
-            val previewCurrentVersion = BuildConfig.COMMIT_COUNT.toInt()
-            var isCheckingWhatsNew by remember { mutableStateOf(false) }
-            // KMK <--
-
-            var showChangelog by remember {
-                mutableStateOf(
-                    // KMK -->
-                    (isReleaseBuildType && didMigration) ||
-                        (isPreviewBuildType && previewCurrentVersion > previewLastVersion.get()),
-                    // KMK <--
-                )
-            }
-            if (showChangelog) {
-                // KMK -->
-                WhatsNewDialog(
-                    onDismissRequest = { showChangelog = false },
-                    onOpenWhatsNew = {
-                        showChangelog = false
-                        if (!isCheckingWhatsNew) {
-                            scope.launch {
-                                isCheckingWhatsNew = true
-
-                                getReleaseNotes(
-                                    context = context,
-                                    onAvailableUpdate = { result ->
-                                        val whatsNewScreen = WhatsNewScreen(
-                                            currentVersion = BuildConfig.VERSION_NAME,
-                                            versionName = result.release.version,
-                                            changelogInfo = result.release.info,
-                                            releaseLink = result.release.releaseLink,
-                                        )
-                                        navigator?.push(whatsNewScreen)
-                                    },
-                                    onFinish = {
-                                        isCheckingWhatsNew = false
-                                    },
-                                )
-                            }
-                        }
-                    },
-                )
-                // KMK <--
-            }
-            // KMK -->
-            previewLastVersion.set(previewCurrentVersion)
-            // KMK <--
         }
 
         val startTime = System.currentTimeMillis()
@@ -466,7 +404,7 @@ class MainActivity : BaseActivity() {
         val context = LocalContext.current
 
         LaunchedEffect(Unit) {
-            launchIO {
+            this.launchIO {
                 try {
                     if (!LibraryUpdateJob.isPeriodicUpdateScheduled(context)) {
                         LibraryUpdateJob.setupTask(context)

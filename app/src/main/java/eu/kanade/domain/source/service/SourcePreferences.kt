@@ -107,7 +107,7 @@ class SourcePreferences(
     // SY <--
 
     // KMK -->
-    fun relatedMangas() = preferenceStore.getBoolean("related_animes", true)
+    fun relatedMangas() = preferenceStore.getBoolean("related_animes", false)
 
     companion object {
         const val PINNED_SOURCES_PREF_KEY = "pinned_anime_catalogues"

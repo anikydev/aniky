@@ -1,9 +1,11 @@
 package tachiyomi.presentation.core.util
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,12 +20,15 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.unit.dp
 import tachiyomi.presentation.core.components.material.SECONDARY_ALPHA
 
 @Composable
@@ -121,4 +126,21 @@ fun Modifier.clearFocusOnSoftKeyboardHide(
             isFocused = it.isFocused
         }
     }
+}
+
+val MaterialTheme.isPureBlack: Boolean
+    @Composable
+    get() = isSystemInDarkTheme() && colorScheme.background == Color.Black
+
+@Composable
+fun Modifier.pureBlackBorder(
+    shape: Shape = RoundedCornerShape(16.dp),
+): Modifier = if (MaterialTheme.isPureBlack) {
+    this.border(
+        width = 1.dp,
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f),
+        shape = shape,
+    )
+} else {
+    this
 }

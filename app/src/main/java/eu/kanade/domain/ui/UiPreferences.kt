@@ -24,14 +24,14 @@ class UiPreferences(
         AppTheme.MONET,
     )
 
-    fun themeDarkAmoled() = preferenceStore.getBoolean("pref_theme_dark_amoled_key", false)
+    fun themeDarkAmoled() = preferenceStore.getBoolean("pref_theme_dark_amoled_key", true)
 
     // KMK -->
     fun colorTheme() = preferenceStore.getInt("pref_color_theme", 0xFFDF0090.toInt())
 
     fun customThemeStyle() = preferenceStore.getEnum("pref_custom_theme_style_key", PaletteStyle.Fidelity)
 
-    fun themeCoverBased() = preferenceStore.getBoolean("pref_theme_cover_based_key", true)
+    fun themeCoverBased() = preferenceStore.getBoolean("pref_theme_cover_based_key", false)
 
     fun themeCoverBasedStyle() = preferenceStore.getEnum("pref_theme_cover_based_style_key", PaletteStyle.Vibrant)
 
@@ -52,12 +52,12 @@ class UiPreferences(
 
     fun expandFilters() = preferenceStore.getBoolean("eh_expand_filters", false)
 
-    fun hideFeedTab() = preferenceStore.getBoolean("hide_latest_tab", false)
+    fun hideFeedTab() = preferenceStore.getBoolean("hide_latest_tab", true)
 
     fun feedTabInFront() = preferenceStore.getBoolean("latest_tab_position", false)
 
     // KMK -->
-    fun expandRelatedMangas() = preferenceStore.getBoolean("expand_related_animes", true)
+    fun expandRelatedMangas() = preferenceStore.getBoolean("expand_related_animes", false)
 
     fun relatedMangasInOverflow() = preferenceStore.getBoolean("related_animes_in_overflow", false)
 
@@ -74,7 +74,7 @@ class UiPreferences(
     fun topAlignCover() = preferenceStore.getBoolean("top_align_cover", false)
     // KMK <--
 
-    fun recommendsInOverflow() = preferenceStore.getBoolean("recommends_in_overflow", false)
+    fun recommendsInOverflow() = preferenceStore.getBoolean("recommends_in_overflow", true)
 
     fun mergeInOverflow() = preferenceStore.getBoolean("merge_in_overflow", true)
 
@@ -84,11 +84,23 @@ class UiPreferences(
 
     fun showNavUpdates() = preferenceStore.getBoolean("pref_show_updates_button", true)
 
-    fun showNavHistory() = preferenceStore.getBoolean("pref_show_history_button", true)
+    fun showNavHistory() = preferenceStore.getBoolean("pref_show_history_button", false)
 
     // SY <--
 
     fun startScreen() = preferenceStore.getEnum("start_screen", StartScreen.LIBRARY)
+
+    fun anilistTitleLanguage() = preferenceStore.getEnum("anilist_title_language", eu.kanade.domain.ui.model.AnilistTitleLanguage.ENGLISH)
+
+    val homeSeasonalSeason = preferenceStore.getInt("home_seasonal_season", -1)
+    val homeSeasonalYear = preferenceStore.getInt("home_seasonal_year", -1)
+    val homeSeasonalFormat = preferenceStore.getInt("home_seasonal_format", -1)
+    val homeSeasonalSort = preferenceStore.getInt("home_seasonal_sort", 0)
+    val homeSeasonalStatus = preferenceStore.getInt("home_seasonal_status", 0)
+    val homeSeasonalViewMode = preferenceStore.getInt("home_seasonal_view_mode", 1)
+    val homeSeasonalGenres = preferenceStore.getStringSet("home_seasonal_genres", emptySet())
+    val homeSeasonalGridColumns = preferenceStore.getInt("home_seasonal_grid_columns", 3)
+    val homeSeasonalSortAscending = preferenceStore.getBoolean("home_seasonal_sort_ascending", false)
 
     companion object {
         fun dateFormat(format: String): DateTimeFormatter = when (format) {

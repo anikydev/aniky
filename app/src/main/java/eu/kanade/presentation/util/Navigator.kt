@@ -39,6 +39,9 @@ interface Tab : cafe.adriel.voyager.navigator.tab.Tab {
     @Composable
     fun isEnabled(): Boolean = true
     // SY <--
+
+    @Composable
+    fun Badge() {}
 }
 
 abstract class Screen : Screen {

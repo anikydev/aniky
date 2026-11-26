@@ -87,6 +87,9 @@ fun NestedMenuItem(
     text: @Composable () -> Unit,
     children: @Composable ColumnScope.(() -> Unit) -> Unit,
     modifier: Modifier = Modifier,
+    // ANK -->
+    leadingIcon: (@Composable () -> Unit)? = null,
+    // ANK <--
 ) {
     var nestedExpanded by remember { mutableStateOf(false) }
     val closeMenu = { nestedExpanded = false }
@@ -95,6 +98,9 @@ fun NestedMenuItem(
         DropdownMenuItem(
             text = text,
             onClick = { nestedExpanded = true },
+            // ANK -->
+            leadingIcon = leadingIcon,
+            // ANK <--
             trailingIcon = {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowRight,

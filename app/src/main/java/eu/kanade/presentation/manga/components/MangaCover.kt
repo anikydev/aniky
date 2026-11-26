@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -63,7 +64,9 @@ enum class MangaCover(val ratio: Float) {
         data: Any?,
         modifier: Modifier = Modifier,
         contentDescription: String = "",
-        shape: Shape = MaterialTheme.shapes.extraSmall,
+        // ANK -->
+        shape: Shape = PosterShape,
+        // ANK <--
         onClick: (() -> Unit)? = null,
         // KMK -->
         alpha: Float = 1f,
@@ -73,6 +76,7 @@ enum class MangaCover(val ratio: Float) {
         onCoverLoaded: ((DomainMangaCover, result: AsyncImagePainter.State.Success) -> Unit)? = null,
         size: Size = Size.Normal,
         scale: ContentScale = ContentScale.Crop,
+        enforceRatio: Boolean = true,
         // KMK <--
     ) {
         // KMK -->
@@ -80,7 +84,7 @@ enum class MangaCover(val ratio: Float) {
         // KMK <--
 
         val modifierColored = modifier
-            .aspectRatio(ratio)
+            .then(if (enforceRatio) Modifier.aspectRatio(ratio) else Modifier)
             .clip(shape)
             // KMK -->
             .alpha(if (succeed) alpha else 1f)
@@ -176,7 +180,9 @@ enum class MangaCoverHide(private val ratio: Float) {
     operator fun invoke(
         modifier: Modifier = Modifier,
         contentDescription: String = "",
-        shape: Shape = MaterialTheme.shapes.extraSmall,
+        // ANK -->
+        shape: Shape = PosterShape,
+        // ANK <--
         onClick: (() -> Unit)? = null,
         // KMK -->
         /** background color, which used for loading/error indicator */
@@ -223,7 +229,13 @@ enum class MangaCoverHide(private val ratio: Float) {
     }
 }
 
+// ANK -->
+val PosterShape = RoundedCornerShape(10.dp)
+// ANK <--
+
 internal const val RatioSwitchToPanorama = 0.75f
 
 internal val CoverPlaceholderColor = Color(0x1F888888)
 internal val CoverPlaceholderOnBgColor = Color(0x8F888888)
+
+typealias AnimeCover = MangaCover

@@ -2,11 +2,7 @@ package eu.kanade.tachiyomi.data.track
 
 import dev.icerock.moko.resources.StringResource
 import eu.kanade.tachiyomi.data.track.anilist.Anilist
-import eu.kanade.tachiyomi.data.track.bangumi.Bangumi
-import eu.kanade.tachiyomi.data.track.kitsu.Kitsu
 import eu.kanade.tachiyomi.data.track.myanimelist.MyAnimeList
-import eu.kanade.tachiyomi.data.track.shikimori.Shikimori
-import eu.kanade.tachiyomi.data.track.simkl.Simkl
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.aniyomi.AYMR
 import tachiyomi.i18n.sy.SYMR
@@ -43,47 +39,6 @@ enum class TrackStatus(val int: Int, val res: StringResource) {
                         Anilist.PLAN_TO_WATCH -> PLAN_TO_WATCH
                         Anilist.DROPPED -> DROPPED
                         Anilist.REWATCHING -> REWATCHING
-                        else -> null
-                    }
-                }
-                trackerManager.kitsu.id -> {
-                    when (status) {
-                        Kitsu.WATCHING -> WATCHING
-                        Kitsu.COMPLETED -> COMPLETED
-                        Kitsu.ON_HOLD -> PAUSED
-                        Kitsu.PLAN_TO_WATCH -> PLAN_TO_WATCH
-                        Kitsu.DROPPED -> DROPPED
-                        else -> null
-                    }
-                }
-                trackerManager.shikimori.id -> {
-                    when (status) {
-                        Shikimori.WATCHING -> WATCHING
-                        Shikimori.COMPLETED -> COMPLETED
-                        Shikimori.ON_HOLD -> PAUSED
-                        Shikimori.PLAN_TO_WATCH -> PLAN_TO_WATCH
-                        Shikimori.DROPPED -> DROPPED
-                        Shikimori.REWATCHING -> REWATCHING
-                        else -> null
-                    }
-                }
-                trackerManager.bangumi.id -> {
-                    when (status) {
-                        Bangumi.WATCHING -> WATCHING
-                        Bangumi.COMPLETED -> COMPLETED
-                        Bangumi.ON_HOLD -> PAUSED
-                        Bangumi.PLAN_TO_WATCH -> PLAN_TO_WATCH
-                        Bangumi.DROPPED -> DROPPED
-                        else -> WATCHING
-                    }
-                }
-                trackerManager.simkl.id -> {
-                    when (status) {
-                        Simkl.WATCHING -> WATCHING
-                        Simkl.COMPLETED -> COMPLETED
-                        Simkl.ON_HOLD -> PAUSED
-                        Simkl.PLAN_TO_WATCH -> PLAN_TO_WATCH
-                        Simkl.NOT_INTERESTING -> DROPPED
                         else -> null
                     }
                 }

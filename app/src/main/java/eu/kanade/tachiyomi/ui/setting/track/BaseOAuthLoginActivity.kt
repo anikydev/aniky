@@ -23,11 +23,24 @@ abstract class BaseOAuthLoginActivity : BaseActivity() {
             LoadingScreen()
         }
 
-        val data = intent.data
-        if (data == null) {
-            returnToSettings()
+        // Only on a first create. The OAuth state is single-use - TrackLoginActivity.verifyState
+        // clears it before comparing, so a replayed callback cannot reuse it - so handling the same
+        // intent a second time fails verification and logs the user out of the account they just
+        // approved. Recreation is otherwise mostly ruled out by the configChanges on this activity,
+        // but process death can still bring it back with the original intent attached.
+        //
+        // Nothing is left to wait for in that case: the login this activity was showing a spinner for
+        // died with the process. Leave rather than sit on LoadingScreen forever - whether it got far
+        // enough to save a token is visible in the tracker's own login state.
+        if (savedInstanceState == null) {
+            val data = intent.data
+            if (data == null) {
+                returnToSettings()
+            } else {
+                handleResult(data)
+            }
         } else {
-            handleResult(data)
+            returnToSettings()
         }
     }
 

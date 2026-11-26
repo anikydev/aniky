@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import soup.compose.material.motion.animation.materialSharedAxisX
 import soup.compose.material.motion.animation.rememberSlideDistance
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.ank.AMR
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.InfoScreen
@@ -46,7 +47,9 @@ fun OnboardingScreen(
 
     InfoScreen(
         icon = Icons.Outlined.RocketLaunch,
-        headingText = stringResource(MR.strings.onboarding_heading),
+        // ANK -->
+        headingText = stringResource(AMR.strings.onboarding_heading_aniky),
+        // ANK <--
         subtitleText = stringResource(MR.strings.onboarding_description),
         acceptText = stringResource(
             if (isLastStep) {
