@@ -2,6 +2,29 @@ import mihon.buildlogic.Config
 import mihon.buildlogic.getBuildTime
 import mihon.buildlogic.getCommitCount
 import mihon.buildlogic.getGitSha
+import java.util.Properties
+
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
+fun signingProp(property: String, env: String): String? =
+    System.getenv(env) ?: localProps.getProperty(property)
+
+val releaseStoreFile = signingProp("release.storeFile", "ANIKY_RELEASE_STORE_FILE")
+val releaseStorePassword = signingProp("release.storePassword", "ANIKY_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = signingProp("release.keyAlias", "ANIKY_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = signingProp("release.keyPassword", "ANIKY_RELEASE_KEY_PASSWORD")
+
+val useReleaseKeystore = run {
+    releaseStoreFile != null && rootProject.file(releaseStoreFile).exists()
+}
+
+val anilistClientId: String = System.getenv("ANILIST_CLIENT_ID")
+    ?: localProps.getProperty("anilist.client_id", "")
+val malClientId: String = System.getenv("MAL_CLIENT_ID")
+    ?: localProps.getProperty("mal.client_id", "")
 
 plugins {
     id("mihon.android.application")
@@ -26,18 +49,31 @@ android {
     namespace = "eu.kanade.tachiyomi"
 
     defaultConfig {
-        applicationId = "app.anikku"
+        applicationId = "app.aniky"
 
-        versionCode = 8
-        versionName = "0.2.0"
+        versionCode = 1
+        versionName = "1.0.0"
 
         buildConfigField("String", "COMMIT_COUNT", "\"${getCommitCount()}\"")
         buildConfigField("String", "COMMIT_SHA", "\"${getGitSha()}\"")
         buildConfigField("String", "BUILD_TIME", "\"${getBuildTime(useLastCommitTime = false)}\"")
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
+        buildConfigField("String", "ANILIST_CLIENT_ID", "\"$anilistClientId\"")
+        buildConfigField("String", "MAL_CLIENT_ID", "\"$malClientId\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            if (useReleaseKeystore && releaseStoreFile != null) {
+                storeFile = rootProject.file(releaseStoreFile)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
@@ -49,6 +85,12 @@ android {
         val release by getting {
             isMinifyEnabled = Config.enableCodeShrink
             isShrinkResources = Config.enableCodeShrink
+
+            signingConfig = if (useReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                debug.signingConfig
+            }
 
             proguardFiles("proguard-android-optimize.txt", "proguard-rules.pro")
 
@@ -108,9 +150,9 @@ android {
     splits {
         abi {
             isEnable = true
-            isUniversalApk = true
+            isUniversalApk = false
             reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            include("armeabi-v7a", "arm64-v8a")
         }
     }
 
@@ -377,6 +419,10 @@ dependencies {
     implementation(aniyomilibs.bundles.cast)
     // nanohttpd server
     implementation(aniyomilibs.nanohttpd)
+
+    // ANK -->
+    implementation(libs.android.youtube.player)
+    // <-- ANK
 }
 
 androidComponents {
