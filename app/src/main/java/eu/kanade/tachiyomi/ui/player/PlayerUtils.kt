@@ -71,3 +71,50 @@ fun <T> Flow<T>.collectAsState(scope: CoroutineScope, initialValue: T? = null) =
         }
         override fun getValue(thisRef: Any?, property: KProperty<*>) = value
     }
+
+// ANK -->
+/**
+ * mpv property carrying the custom skip button's jump length, in seconds.
+ *
+ * The button's Lua scripts name this property as a string too -- see the seed in `custom_buttons.sq`
+ * and the migrations that rewrite it -- so it cannot be renamed from Kotlin alone.
+ */
+internal const val SKIP_SECONDS_PROPERTY = "user-data/aniky/skip-seconds"
+
+/**
+ * Smallest jump length the button's script will act on, mirroring the `if n < 1 then n = 85 end`
+ * guard in the seeded Lua. The picker's range and step live in the `aniyomi.int_picker(...)`
+ * arguments inside `custom_buttons.sq`; only this floor is the app's.
+ */
+internal const val MIN_SKIP_SECONDS = 1
+
+/**
+ * The stored jump length, floored at [MIN_SKIP_SECONDS].
+ */
+internal fun eu.kanade.tachiyomi.ui.player.settings.GesturePreferences.skipSeconds(): Int =
+    skipButtonSeconds().get().coerceAtLeast(MIN_SKIP_SECONDS)
+
+/** What an observed [SKIP_SECONDS_PROPERTY] value means for the stored preference. */
+internal sealed interface SkipSecondsWrite {
+    /** The value already matches the preference; nothing to do. */
+    data object Ignore : SkipSecondsWrite
+
+    /** A value the script can use; store it. */
+    data class Persist(val seconds: Int) : SkipSecondsWrite
+
+    /** Nonsense the script cannot use; put [seconds] back into mpv and leave the preference alone. */
+    data class Restore(val seconds: Int) : SkipSecondsWrite
+}
+
+/**
+ * Pure decision behind [eu.kanade.tachiyomi.ui.player.PlayerViewModel.saveSkipButtonSeconds].
+ *
+ * An unusable [observed] value restores [stored] rather than a corrected version of itself, so a
+ * script writing garbage into the property can never become the user's saved setting.
+ */
+internal fun resolveSkipSecondsWrite(observed: Int, stored: Int): SkipSecondsWrite = when {
+    observed < MIN_SKIP_SECONDS -> SkipSecondsWrite.Restore(stored)
+    observed == stored -> SkipSecondsWrite.Ignore
+    else -> SkipSecondsWrite.Persist(observed)
+}
+// ANK <--

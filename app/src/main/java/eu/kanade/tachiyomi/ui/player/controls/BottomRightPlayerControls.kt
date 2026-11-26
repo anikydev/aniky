@@ -41,19 +41,26 @@ fun BottomRightPlayerControls(
     modifier: Modifier = Modifier,
 ) {
     Row(modifier) {
+        // ANK -->
+        // The custom button always shows; a Lua script can rename it (set_button_title) but it
+        // can never disappear. If the title was set blank, fall back to the button's name so the
+        // button never renders as an empty/zero-width pill.
+        if (customButton != null) {
+            FilledControlsButton(
+                text = customButtonTitle.ifEmpty { customButton.name },
+                onClick = onCustomButtonClick,
+                onLongClick = onCustomButtonLongClick,
+            )
+        }
+
         if (skipIntroButton != null) {
             FilledControlsButton(
                 text = skipIntroButton,
                 onClick = onPressSkipIntroButton,
                 onLongClick = {},
             )
-        } else if (customButton != null) {
-            FilledControlsButton(
-                text = customButtonTitle,
-                onClick = onCustomButtonClick,
-                onLongClick = onCustomButtonLongClick,
-            )
         }
+        // ANK <--
 
         if (isPipAvailable) {
             ControlsButton(

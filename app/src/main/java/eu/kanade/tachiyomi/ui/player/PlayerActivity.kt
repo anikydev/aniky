@@ -579,6 +579,13 @@ class PlayerActivity : BaseActivity() {
         val showBlackBars = if (subtitlePreferences.subtitleBlackBars().get()) "yes" else "no"
         mpv.setOptionString("sub-ass-force-margins", showBlackBars)
         mpv.setOptionString("sub-use-margins", showBlackBars)
+        // ANK -->
+        try {
+            mpv.setPropertyInt(SKIP_SECONDS_PROPERTY, gesturePreferences.skipSeconds())
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN, e) { "Failed to seed $SKIP_SECONDS_PROPERTY" }
+        }
+        // ANK <--
         mpv.addLogObserver(playerObserver)
         mpv.addObserver(playerObserver)
     }
@@ -677,6 +684,13 @@ class PlayerActivity : BaseActivity() {
     @Suppress("unused")
     internal fun onObserverEvent(property: String, value: Long) {
         if (player.isExiting) return
+        // ANK -->
+        when (property) {
+            SKIP_SECONDS_PROPERTY -> viewModel.saveSkipButtonSeconds(
+                value.coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt(),
+            )
+        }
+        // ANK <--
     }
 
     @Suppress("unused")

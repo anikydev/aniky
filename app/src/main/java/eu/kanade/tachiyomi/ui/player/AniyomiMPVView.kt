@@ -195,6 +195,9 @@ class AniyomiMPVView(context: Context, attributes: AttributeSet?) : BaseMPVView(
         "user-data/aniyomi/seek_to_with_text" to MPV.mpvFormat.MPV_FORMAT_STRING,
         "user-data/aniyomi/launch_int_picker" to MPV.mpvFormat.MPV_FORMAT_STRING,
         "user-data/aniyomi/show_seek_text" to MPV.mpvFormat.MPV_FORMAT_STRING,
+        // ANK -->
+        SKIP_SECONDS_PROPERTY to MPV.mpvFormat.MPV_FORMAT_INT64,
+        // ANK <--
     )
 
     private fun setupAudioOptions() {

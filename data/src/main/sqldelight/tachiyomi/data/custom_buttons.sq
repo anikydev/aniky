@@ -10,23 +10,22 @@ CREATE TABLE custom_buttons (
     onStartup TEXT NOT NULL
 );
 
--- Insert skip intro button --
+-- Insert the default skip button --
+-- The jump length lives in an mpv property that the app seeds from a preference (so it persists
+-- across sessions); int_picker writes the picked value straight back to that same property, the app
+-- observes it to save, and the startup observer keeps the button label in sync.
+--
+-- Both scripts reject values below 1 rather than leaning on `or 85`: 0 is truthy in Lua, so a
+-- property that somehow holds 0 would otherwise make the button seek nowhere and label itself "+0 s".
 INSERT OR IGNORE INTO custom_buttons (_id, name, isFavorite, sortIndex, content, longPressContent, onStartup)
-VALUES (1, '+85 s', 1, 0, 'local intro_length = mp.get_property_number("user-data/current-anime/intro-length")
-aniyomi.right_seek_by(intro_length)', 'aniyomi.int_picker("Change intro length", "%ds", 0, 255, 1, "user-data/current-anime/intro-length")', 'function update_button(_, length)
-  if length ~= nil then
-    if length == 0 then
-	  aniyomi.hide_button()
-	  return
-	else
-	  aniyomi.show_button()
-	end
-    aniyomi.set_button_title("+" .. length .. " s")
-  end
-end
-
-if $isPrimary then
-  mp.observe_property("user-data/current-anime/intro-length", "number", update_button)
+VALUES (1, '+85 s', 1, 0, 'local n = math.floor(mp.get_property_number("user-data/aniky/skip-seconds") or 0)
+if n < 1 then n = 85 end
+aniyomi.seek_by_with_text(n, "Skipped " .. n .. " s")', 'aniyomi.int_picker("Skip amount", "%ds", 5, 300, 5, "user-data/aniky/skip-seconds")', 'if $isPrimary then
+  mp.observe_property("user-data/aniky/skip-seconds", "number", function(_, n)
+    if n ~= nil and n >= 1 then
+      aniyomi.set_button_title("+" .. math.floor(n) .. " s")
+    end
+  end)
 end');
 
 findAll:

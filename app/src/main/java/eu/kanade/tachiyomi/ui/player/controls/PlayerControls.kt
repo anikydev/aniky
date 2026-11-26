@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.graphics.toColorInt
@@ -75,6 +76,8 @@ import eu.kanade.tachiyomi.ui.player.cast.components.CastSheet
 import eu.kanade.tachiyomi.ui.player.controls.components.BrightnessOverlay
 import eu.kanade.tachiyomi.ui.player.controls.components.BrightnessSlider
 import eu.kanade.tachiyomi.ui.player.controls.components.ControlsButton
+import eu.kanade.tachiyomi.ui.player.controls.components.DoubleSpeedPlayerUpdate
+import eu.kanade.tachiyomi.ui.player.controls.components.NextEpisodeCountdownCard
 import eu.kanade.tachiyomi.ui.player.controls.components.SeekbarWithTimers
 import eu.kanade.tachiyomi.ui.player.controls.components.TextPlayerUpdate
 import eu.kanade.tachiyomi.ui.player.controls.components.VolumeSlider
@@ -210,6 +213,7 @@ fun PlayerControls(
                     unlockControlsButton,
                     bottomRightControls, bottomLeftControls,
                     centerControls, seekbar, playerUpdates,
+                    nextEpisodeCard,
                 ) = createRefs()
 
                 val hasPreviousEpisode by viewModel.hasPreviousEpisode.collectAsState()
@@ -335,7 +339,7 @@ fun PlayerControls(
                     },
                 ) {
                     when (currentPlayerUpdate) {
-                        // is PlayerUpdates.DoubleSpeed -> DoubleSpeedPlayerUpdate()
+                        is PlayerUpdates.DoubleSpeed -> DoubleSpeedPlayerUpdate()
                         is PlayerUpdates.AspectRatio -> TextPlayerUpdate(stringResource(aspectRatio.titleRes))
                         is PlayerUpdates.ShowText -> TextPlayerUpdate(
                             (currentPlayerUpdate as PlayerUpdates.ShowText).value,
@@ -596,6 +600,43 @@ fun PlayerControls(
                         onOpenSheet = viewModel::showSheet,
                     )
                 }
+
+                // ANK -->
+                val remainingSeconds = if (duration != null && position != null && duration!! > 60) {
+                    duration!! - position!!
+                } else {
+                    null
+                }
+                var lastCountdownSeconds by remember { mutableStateOf(15) }
+                if (remainingSeconds != null && remainingSeconds in 1..15) {
+                    lastCountdownSeconds = remainingSeconds
+                }
+                var nextEpDismissedForTitle by remember { mutableStateOf<String?>(null) }
+                val showNextEpisodeCard = hasNextEpisode &&
+                    !isLoadingEpisode &&
+                    !areControlsLocked &&
+                    autoPlayEnabled &&
+                    paused == false &&
+                    remainingSeconds != null &&
+                    remainingSeconds in 1..15 &&
+                    nextEpDismissedForTitle != mediaTitle
+
+                AnimatedVisibility(
+                    visible = showNextEpisodeCard,
+                    enter = fadeIn(playerControlsEnterAnimationSpec()),
+                    exit = fadeOut(playerControlsExitAnimationSpec()),
+                    modifier = Modifier.constrainAs(nextEpisodeCard) {
+                        bottom.linkTo(bottomRightControls.top, spacing.small, goneMargin = 24.dp)
+                        end.linkTo(parent.end)
+                    },
+                ) {
+                    NextEpisodeCountdownCard(
+                        secondsLeft = lastCountdownSeconds,
+                        onPlayNow = { viewModel.changeEpisode(false) },
+                        onDismiss = { nextEpDismissedForTitle = mediaTitle },
+                    )
+                }
+                // ANK <--
             }
         }
 

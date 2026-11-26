@@ -59,7 +59,6 @@ import eu.kanade.presentation.theme.playerRippleConfiguration
 import eu.kanade.tachiyomi.ui.player.Panels
 import eu.kanade.tachiyomi.ui.player.PlayerUpdates
 import eu.kanade.tachiyomi.ui.player.PlayerViewModel
-import eu.kanade.tachiyomi.ui.player.Sheets
 import eu.kanade.tachiyomi.ui.player.controls.components.DoubleTapSeekTriangles
 import eu.kanade.tachiyomi.ui.player.settings.AudioPreferences
 import eu.kanade.tachiyomi.ui.player.settings.GesturePreferences
@@ -87,7 +86,6 @@ fun GestureHandler(
     val paused by viewModel.mpv.propFlow<Boolean>("pause").collectAsState()
     val duration by viewModel.mpv.propFlow<Int>("duration").collectAsState()
     val position by viewModel.mpv.propFlow<Int>("time-pos").collectAsState()
-    val playbackSpeed by viewModel.mpv.propFlow<Float>("speed").collectAsState()
     val controlsShown by viewModel.controlsShown.collectAsState()
     val areControlsLocked by viewModel.areControlsLocked.collectAsState()
     val seekAmount by viewModel.doubleTapSeekAmount.collectAsState()
@@ -120,7 +118,7 @@ fun GestureHandler(
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeGestures)
             .pointerInput(Unit) {
-                val originalSpeed = viewModel.mpv.getPropertyFloat("speed") ?: 1f
+                var speedBeforePress = 1f
                 detectTapGestures(
                     onTap = {
                         if (controlsShown) viewModel.hideControls() else viewModel.showControls()
@@ -140,6 +138,7 @@ fun GestureHandler(
                         }
                     },
                     onPress = {
+                        speedBeforePress = viewModel.mpv.getPropertyFloat("speed") ?: 1f
                         if (panelShown != Panels.None && !allowGesturesInPanels) {
                             viewModel.panelShown.update { Panels.None }
                         }
@@ -160,22 +159,30 @@ fun GestureHandler(
                             isDoubleTapSeeking = false
                         }
                         interactionSource.emit(press)
-                        tryAwaitRelease()
-                        if (isLongPressing) {
-                            isLongPressing = false
-                            viewModel.mpv.setPropertyFloat("speed", originalSpeed)
-                            viewModel.playerUpdate.update { PlayerUpdates.None }
+                        // ANK -->
+                        try {
+                            tryAwaitRelease()
+                        } finally {
+                            if (isLongPressing) {
+                                isLongPressing = false
+                                viewModel.mpv.setPropertyFloat("speed", speedBeforePress)
+                                viewModel.playerUpdate.update { PlayerUpdates.None }
+                            }
                         }
+                        // ANK <--
                         interactionSource.emit(PressInteraction.Release(press))
                     },
                     onLongPress = {
-                        if (areControlsLocked) return@detectTapGestures
+                        // ANK -->
+                        if (areControlsLocked || paused == true) return@detectTapGestures
                         if (!isLongPressing) {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             isLongPressing = true
-                            viewModel.pause()
-                            viewModel.sheetShown.update { Sheets.Screenshot }
+                            speedBeforePress = viewModel.mpv.getPropertyFloat("speed") ?: 1f
+                            viewModel.mpv.setPropertyFloat("speed", 2.0f)
+                            viewModel.playerUpdate.update { PlayerUpdates.DoubleSpeed }
                         }
+                        // ANK <--
                     },
                 )
             }

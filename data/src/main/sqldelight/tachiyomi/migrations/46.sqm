@@ -1,0 +1,22 @@
+-- Repairs and hardens the default skip button.
+--
+-- Upstream seeded button read "user-data/current-anime/intro-length", which hid the button when 0 or
+-- failed to seek when skip-intro was disabled. The button now owns its own property
+-- ("user-data/aniky/skip-seconds") backed by an app preference so that long-pressing to change the skip
+-- length persists across sessions and anime.
+--
+-- Matched against the exact old stock scripts so a button edited by the user is left alone.
+
+UPDATE custom_buttons
+SET content = 'local n = math.floor(mp.get_property_number("user-data/aniky/skip-seconds") or 0)
+if n < 1 then n = 85 end
+aniyomi.seek_by_with_text(n, "Skipped " .. n .. " s")',
+    longPressContent = 'aniyomi.int_picker("Skip amount", "%ds", 5, 300, 5, "user-data/aniky/skip-seconds")',
+    onStartup = 'if $isPrimary then
+  mp.observe_property("user-data/aniky/skip-seconds", "number", function(_, n)
+    if n ~= nil and n >= 1 then
+      aniyomi.set_button_title("+" .. math.floor(n) .. " s")
+    end
+  end)
+end'
+WHERE content LIKE '%user-data/current-anime/intro-length%';

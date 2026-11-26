@@ -20,6 +20,14 @@ class GesturePreferences(
     fun showSeekBar() = preferenceStore.getBoolean("pref_show_seekbar", false)
     fun defaultIntroLength() = preferenceStore.getInt("pref_default_intro_length", 85)
     fun skipLengthPreference() = preferenceStore.getInt("pref_skip_length_preference", 10)
+    // ANK -->
+    /**
+     * Seconds the custom skip button jumps forward. Owned here rather than by the Lua script so it
+     * survives across player sessions; the script reads it from an mpv property and the long-press
+     * picker writes it back.
+     */
+    fun skipButtonSeconds() = preferenceStore.getInt("pref_skip_button_seconds", 85)
+    // ANK <--
     fun playerSmoothSeek() = preferenceStore.getBoolean("pref_player_smooth_seek", false)
 
     // Double tap

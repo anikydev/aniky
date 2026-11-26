@@ -1115,9 +1115,9 @@ class PlayerViewModel @JvmOverloads constructor(
             }
             "launch_int_picker" -> {
                 val (title, nameFormat, start, stop, step, pickerProperty) = data.split("|")
+                // ANK -->
                 val defaultValue = mpv.getPropertyInt(pickerProperty)
-                    // ANK -->
-                    ?: return
+                    ?: if (pickerProperty == SKIP_SECONDS_PROPERTY) gesturePreferences.skipSeconds() else return
                 // ANK <--
                 showDialog(
                     Dialogs.IntegerPicker(
@@ -1154,19 +1154,21 @@ class PlayerViewModel @JvmOverloads constructor(
             "seek_by" -> seekByWithText(data.toInt(), null)
             "seek_to" -> seekToWithText(data.toInt(), null)
             "toggle_button" -> {
-                fun showButton() {
-                    if (_primaryButton.value == null) {
-                        _primaryButton.update {
-                            customButtons.value.firstOrNull { it.isFavorite }
+                // ANK -->
+                // The primary (favorite) custom button is always visible; Lua scripts can only
+                // ensure it's shown ("show"), never hide it ("hide"/"toggle") — otherwise it
+                // would silently disappear for some anime.
+                when (data) {
+                    "show" -> {
+                        if (_primaryButton.value == null) {
+                            _primaryButton.update {
+                                customButtons.value.firstOrNull { it.isFavorite }
+                            }
                         }
                     }
+                    else -> Unit
                 }
-
-                when (data) {
-                    "show" -> showButton()
-                    "hide" -> _primaryButton.update { null }
-                    "toggle" -> if (_primaryButton.value == null) showButton() else _primaryButton.update { null }
-                }
+                // ANK <--
             }
             "software_keyboard" -> {
                 viewModelScope.launch {
@@ -1554,7 +1556,17 @@ class PlayerViewModel @JvmOverloads constructor(
                 val parentTitle = anime.parentId?.let { getAnime.await(it)?.title } ?: ""
                 mpv.setPropertyString("user-data/current-anime/anime-title", anime.title)
                 mpv.setPropertyString("user-data/current-anime/parent-title", parentTitle)
-                mpv.setPropertyInt("user-data/current-anime/intro-length", getAnimeSkipIntroLength())
+                // ANK -->
+                mpv.setPropertyInt(
+                    "user-data/current-anime/intro-length",
+                    getAnimeSkipIntroLength().takeIf { it > 0 }
+                        ?: gesturePreferences.defaultIntroLength().get(),
+                )
+                mpv.setPropertyInt(
+                    SKIP_SECONDS_PROPERTY,
+                    gesturePreferences.skipSeconds(),
+                )
+                // ANK <--
                 mpv.setPropertyString(
                     "user-data/current-anime/category",
                     getCategories.await(anime.id).joinToString {
@@ -2601,6 +2613,27 @@ class PlayerViewModel @JvmOverloads constructor(
     fun setPrimaryCustomButtonTitle(button: CustomButton) {
         _primaryButtonTitle.update { _ -> button.name }
     }
+
+    // ANK -->
+    /**
+     * Persists the custom skip button's jump length, so a value picked with a long press survives the
+     * player session. Called for every write to [SKIP_SECONDS_PROPERTY], including the one the
+     * Activity makes to seed it, which is why an unchanged value is not written back.
+     *
+     * A script can put anything in that property. An unusable value restores the stored preference
+     * into mpv instead of storing a corrected version of itself: clamping and saving would let a
+     * single rogue write replace the amount the user picked, with no way to recover it. See
+     * [resolveSkipSecondsWrite] for the decision, which is unit-tested.
+     */
+    fun saveSkipButtonSeconds(seconds: Int) {
+        val preference = gesturePreferences.skipButtonSeconds()
+        when (val write = resolveSkipSecondsWrite(seconds, gesturePreferences.skipSeconds())) {
+            is SkipSecondsWrite.Restore -> mpv.setPropertyInt(SKIP_SECONDS_PROPERTY, write.seconds)
+            is SkipSecondsWrite.Persist -> preference.set(write.seconds)
+            SkipSecondsWrite.Ignore -> Unit
+        }
+    }
+    // ANK <--
 
     sealed class Event {
         data class SetCoverResult(val result: SetAsCover, val artType: ArtType) : Event()
