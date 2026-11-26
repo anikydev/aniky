@@ -22,6 +22,7 @@ import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.sync.service.GoogleDriveService
 import eu.kanade.tachiyomi.data.track.TrackerManager
+import eu.kanade.tachiyomi.data.track.anilist.AniListNotificationStore
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.network.JavaScriptEngine
 import eu.kanade.tachiyomi.network.NetworkHelper
@@ -216,5 +217,8 @@ class AppModule(val app: Application) : InjektModule {
         }
 
         addSingletonFactory { GoogleDriveService(app) }
+        // ANK -->
+        addSingletonFactory { AniListNotificationStore() }
+        // ANK <--
     }
 }

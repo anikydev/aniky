@@ -7,43 +7,48 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
 
-class AnilistInterceptor(val anilist: Anilist, private var token: String?) : Interceptor {
+// [token] is read on OkHttp threads in [intercept] and written from [setAuth] (login/logout), so it
+// is @Volatile like [oauth]: without it a caller could briefly see a stale token after an account
+// change.
+class AnilistInterceptor(val anilist: Anilist, @Volatile private var token: String?) : Interceptor {
 
     /**
      * OAuth object used for authenticated requests.
      *
-     * Anilist returns the date without milliseconds. We fix that and make the token expire 1 minute
-     * before its original expiration date.
+     * [AnilistApi.createOAuth] already stores the expiration date in milliseconds, so only the
+     * 1 minute safety margin is applied here - converting again would push the expiry thousands of
+     * years out and [isExpired] would never fire.
      */
+    @Volatile
     private var oauth: ALOAuth? = null
         set(value) {
-            field = value?.copy(expires = value.expires * 1000 - 60 * 1000)
+            field = value?.copy(expires = value.expires - 60 * 1000)
         }
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
 
         if (token.isNullOrEmpty()) {
-            throw Exception("Not authenticated with Anilist")
+            throw IOException("Not authenticated with Anilist")
         }
         if (oauth == null) {
             oauth = anilist.loadOAuth()
         }
-        // Refresh access token if null or expired.
-        if (oauth!!.isExpired()) {
+
+        // Throw on null auth. Checked before the expiry so a missing/corrupt stored token surfaces
+        // as an IOException instead of an NPE from inside the interceptor.
+        val auth = oauth ?: throw IOException("No authentication token")
+
+        // Log out if the access token expired.
+        if (auth.isExpired()) {
             anilist.logout()
             throw IOException("Token expired")
         }
 
-        // Throw on null auth.
-        if (oauth == null) {
-            throw IOException("No authentication token")
-        }
-
         // Add the authorization header to the original request.
         val authRequest = originalRequest.newBuilder()
-            .addHeader("Authorization", "Bearer ${oauth!!.accessToken}")
-            .header("User-Agent", "Anikku v${BuildConfig.VERSION_NAME} (${BuildConfig.APPLICATION_ID})")
+            .header("Authorization", "Bearer ${auth.accessToken}")
+            .header("User-Agent", "Aniky v${BuildConfig.VERSION_NAME} (${BuildConfig.APPLICATION_ID})")
             .build()
 
         return chain.proceed(authRequest)

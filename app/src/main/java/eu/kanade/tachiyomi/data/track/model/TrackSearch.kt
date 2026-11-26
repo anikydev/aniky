@@ -18,6 +18,12 @@ class TrackSearch : Track {
 
     override lateinit var title: String
 
+    var englishTitle: String? = null
+
+    var romajiTitle: String? = null
+
+    var nativeTitle: String? = null
+
     override var last_episode_seen: Double = 0.0
 
     override var total_episodes: Long = 0
@@ -48,6 +54,28 @@ class TrackSearch : Track {
 
     var start_date: String = ""
 
+    var popularity: Long = 0
+
+    var next_airing_episode: Long = 0
+
+    var next_airing_at: Long = 0
+
+    var genres: List<String> = emptyList()
+
+    var season: String = ""
+
+    var seasonYear: Int = 0
+
+    var hasTrailer: Boolean = false
+
+    var studio: String? = null
+
+    var favourites: Long = 0
+
+    var trackerStatus: String? = null
+
+    var mediaListId: Long? = null
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -57,6 +85,11 @@ class TrackSearch : Track {
         if (anime_id != other.anime_id) return false
         if (tracker_id != other.tracker_id) return false
         if (remote_id != other.remote_id) return false
+        if (status != other.status) return false
+        if (last_episode_seen != other.last_episode_seen) return false
+        if (score != other.score) return false
+        if (trackerStatus != other.trackerStatus) return false
+        if (mediaListId != other.mediaListId) return false
 
         return true
     }
@@ -65,6 +98,11 @@ class TrackSearch : Track {
         var result = anime_id.hashCode()
         result = 31 * result + tracker_id.hashCode()
         result = 31 * result + remote_id.hashCode()
+        result = 31 * result + status.hashCode()
+        result = 31 * result + last_episode_seen.hashCode()
+        result = 31 * result + score.hashCode()
+        result = 31 * result + (trackerStatus?.hashCode() ?: 0)
+        result = 31 * result + (mediaListId?.hashCode() ?: 0)
         return result
     }
 

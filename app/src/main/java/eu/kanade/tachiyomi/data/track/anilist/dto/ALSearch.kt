@@ -17,4 +17,10 @@ data class ALSearchPage(
 @Serializable
 data class ALSearchMedia(
     val media: List<ALSearchItem>,
+    val pageInfo: ALPageInfo = ALPageInfo(),
+)
+
+@Serializable
+data class ALPageInfo(
+    val hasNextPage: Boolean = false,
 )

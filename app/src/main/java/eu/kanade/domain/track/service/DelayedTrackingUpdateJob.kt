@@ -23,7 +23,11 @@ class DelayedTrackingUpdateJob(private val context: Context, workerParams: Worke
     CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
-        if (runAttemptCount > 3) {
+        // Attempts are bounded so a persistently failing update (revoked token that still
+        // reads as logged in, hostile network) backs off instead of retrying forever - but
+        // the bar is high because giving up strands queued progress until the next watch
+        // or offline event reschedules. Items themselves are never deleted here.
+        if (runAttemptCount > MAX_ATTEMPTS) {
             return Result.failure()
         }
 
@@ -39,7 +43,7 @@ class DelayedTrackingUpdateJob(private val context: Context, workerParams: Worke
                     if (track == null) {
                         delayedTrackingStore.remove(it.trackId)
                     }
-                    track?.copy(lastChapterRead = it.lastChapterRead.toDouble())
+                    track?.copy(lastChapterRead = it.lastChapterRead)
                 }
                 .forEach { track ->
                     logcat(LogPriority.DEBUG) {
@@ -54,6 +58,7 @@ class DelayedTrackingUpdateJob(private val context: Context, workerParams: Worke
 
     companion object {
         private const val TAG = "DelayedTrackingUpdate"
+        private const val MAX_ATTEMPTS = 10
 
         fun setupTask(context: Context) {
             val constraints = Constraints(

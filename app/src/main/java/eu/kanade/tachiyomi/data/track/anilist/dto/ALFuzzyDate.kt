@@ -10,12 +10,18 @@ data class ALFuzzyDate(
     val month: Int?,
     val day: Int?,
 ) {
-    fun toEpochMilli(): Long = try {
-        LocalDate.of(year!!, month!!, day!!)
-            .atStartOfDay(ZoneId.systemDefault())
-            .toInstant()
-            .toEpochMilli()
-    } catch (_: Exception) {
-        0L
+    fun toEpochMilli(): Long {
+        // AniList fuzzy dates are frequently partial (year-only is common). Fill a missing
+        // month/day with the start of the period instead of NPEing on year!!/month!!/day!! and
+        // silently collapsing the whole date to 0L ("no date").
+        val year = year ?: return 0L
+        return try {
+            LocalDate.of(year, month ?: 1, day ?: 1)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+        } catch (_: Exception) {
+            0L
+        }
     }
 }

@@ -19,10 +19,8 @@ data class ALAnime(
     val startDateFuzzy: Long,
     val totalEpisodes: Long,
     val averageScore: Int,
-    val studios: ALStudios,
-    val staff: ALStaff,
 ) {
-    fun toTrackSearch() = TrackSearch.create(TrackerManager.ANILIST).apply {
+    fun toTrack() = TrackSearch.create(TrackerManager.ANILIST).apply {
         remote_id = remoteId
         title = this@ALAnime.title
         total_episodes = totalEpisodes
@@ -40,11 +38,6 @@ data class ALAnime(
                 ""
             }
         }
-        authors = (
-            studios.nodes.map { it.name } +
-                staff.edges.mapNotNull { it.getAuthorName() }
-            )
-        artists = staff.edges.mapNotNull { it.getArtistName() }
     }
 }
 
@@ -56,7 +49,7 @@ data class ALUserAnime(
     val startDateFuzzy: Long,
     val completedDateFuzzy: Long,
     val anime: ALAnime,
-    val private: Boolean,
+    val private: Boolean = false,
 ) {
     fun toTrack() = Track.create(TrackerManager.ANILIST).apply {
         remote_id = anime.remoteId
@@ -78,6 +71,8 @@ data class ALUserAnime(
         "DROPPED" -> Anilist.DROPPED
         "PLANNING" -> Anilist.PLAN_TO_WATCH
         "REPEATING" -> Anilist.REWATCHING
-        else -> throw NotImplementedError("Unknown status: $listStatus")
+        // Don't crash findLibAnime/bind on a status AniList might add later; degrade to the most
+        // likely active state instead of throwing.
+        else -> Anilist.WATCHING
     }
 }

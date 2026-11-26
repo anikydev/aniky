@@ -13,10 +13,12 @@ firebase-bom = "34.19.0"
 markdown = "0.39.2"
 junit = "6.1.3"
 materialKolor = "5.0.0-alpha06"
+android-youtube-player = "13.0.0"
 
 [libraries]
 desugar = "com.android.tools:desugar_jdk_libs:2.1.5"
 android-shortcut-gradle = "com.github.komikku-app:android-shortcut-gradle-plugin:0.2.0"
+android-youtube-player = { module = "com.pierfrancescosoffritti.androidyoutubeplayer:core", version.ref = "android-youtube-player" }
 
 rxjava = "io.reactivex:rxjava:1.3.8"
 

@@ -7,6 +7,7 @@ import eu.kanade.domain.track.service.DelayedTrackingUpdateJob
 import eu.kanade.domain.track.store.DelayedTrackingStore
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.util.system.isOnline
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import logcat.LogPriority
@@ -39,18 +40,32 @@ class TrackChapter(
                     !service.isLoggedIn ||
                     chapterNumber <= track.lastChapterRead
                 ) {
+                    delayedTrackingStore.remove(track.id)
                     return@mapNotNull null
                 }
 
                 async {
                     runCatching {
                         if (context.isOnline()) {
-                            val updatedTrack = service.refresh(track.toDbTrack())
-                                .toDomainTrack(idRequired = true)!!
-                                .copy(lastChapterRead = chapterNumber)
-                            service.update(updatedTrack.toDbTrack(), true)
-                            insertTrack.await(updatedTrack)
-                            delayedTrackingStore.remove(track.id)
+                            try {
+                                val updatedTrack = service.refresh(track.toDbTrack())
+                                    .toDomainTrack(idRequired = true)!!
+                                    .copy(lastChapterRead = chapterNumber)
+                                service.update(updatedTrack.toDbTrack(), true)
+                                insertTrack.await(updatedTrack)
+                                delayedTrackingStore.remove(track.id)
+                            } catch (e: Exception) {
+                                // A transient failure (429, 5xx, timeout) while online must not
+                                // drop the progress update: queue it for the delayed job the
+                                // same way offline updates are queued. The store keeps the
+                                // highest episode number, so retries converge.
+                                if (e is CancellationException) throw e
+                                delayedTrackingStore.add(track.id, chapterNumber)
+                                if (setupJobOnFailure) {
+                                    DelayedTrackingUpdateJob.setupTask(context)
+                                }
+                                throw e
+                            }
                         } else {
                             delayedTrackingStore.add(track.id, chapterNumber)
                             if (setupJobOnFailure) {
@@ -62,7 +77,7 @@ class TrackChapter(
             }
                 .awaitAll()
                 .mapNotNull { it.exceptionOrNull() }
-                .forEach { logcat(LogPriority.INFO, it) }
+                .forEach { logcat(LogPriority.WARN, it) { "Track progress update failed (queued for retry)" } }
         }
     }
 }
