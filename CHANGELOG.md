@@ -4,15 +4,117 @@ All notable changes to this project will be documented in this file.
 
 The format is a modified version of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `Added` - for new features.
-- `Changed ` - for changes in existing functionality.
+- `Changed` - for changes in existing functionality.
 - `Improved` - for enhancement or optimization in existing functionality.
 - `Removed` - for now removed features.
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
-## [Unreleased]
+## [v1.0.0] - 2026-11-26
+
+Initial public release (`app.aniky`, `versionCode 1`) built directly on upstream Anikku (`r8944`) with full native AniList integration, Discover & Seasonal charts, Studio & Staff/Character catalogs, community recommendations, franchise relation matrix, in-app PV trailer & OP/ED video/audio preview sheets, inline source matching with configurable quick-add extensions, long-press 2× speed, HTTP/2 MPV playback & multi-threaded OkHttp video downloader, Continue Watching, A-Z default sorting, pure AMOLED black theme, hardened player custom skip button, and AniList 429 rate-limiting resilience.
+
 ### Added
-- Added option to skip broken tracks on download ([@Secozzi](https://github.com/Secozzi)) ([#169](https://github.com/quickdesh/Animiru/pull/169))
+
+- **Upstream Anikku Foundation:** Built on latest upstream Anikku codebase (tag `r8944`, commit `6e35b41`) while preserving all core upstream features intact (Anime Suggestions, Auto theme colors, Bulk-favorite, Fast browsing, Feed tab, Categories, SyncYomi & Google Drive sync) for straightforward future upstream synchronization.
+- **Native AniList Tab & Discovery:** Complete dedicated AniList navigation tab with unified design tokens (`AniListBadges`, `AniListGridCard`), shimmer skeleton loaders (`AniListSkeleton`), unified `AniListLoginRequired` prompt, remembered sub-tab selection, and double-tap tab re-selection to scroll to top, containing:
+  - **Discover:** Trending, Popular this Season, Next Season, and Top Anime carousels and lists with live tracking badges, `Ep X · countdown` pills, and quick genre chips.
+  - **Search & Favourites:** Multi-criteria search with removable active filter chips, live filter counter badge, grid/list layout switcher, and 1-tap library source matching from favourites and recommendations.
+  - **Seasonal Chart (AL-Chan Style & Interactive Tracking):**
+    - **Live Tracker Integration:** Displays user's live AniList status (`🟢 WATCHING`, `🟡 PLANNING`, `PAUSED`, `COMPLETED`, `DROPPED`, `REPEATING`) with 1-tap dialog to update status or remove entries. Untracked titles feature a distinct teal 1-tap `+ Add to Planning` pill (`#26A69A`).
+    - **High-Density Compact Cards:** Displays 7–9 anime titles on screen simultaneously, showing live score (`★`), favourites heart (`❤️`), and member popularity metrics formatted compactly alongside studio names, plus unified `AniListGridCard` in grid view.
+    - **Quick Add-to-Library:** 1-tap `+` button on unadded titles opening the inline `Match in Sources` sheet across preferred or enabled extensions.
+    - **Consolidated 2-Row Navigation & Filters:** Season and Year selector dropdown pills, Prev/Next stepper buttons, jump-to-current season button, sort direction indicator (Asc/Desc), and quick format and status filter chips.
+    - **3-Tab Filter, Sort & Display Sheet:** Adaptive bottom sheet (`Filter | Sort | Display`) featuring multi-line `FlowRow` genre chips, format/status filters, sort options, and grid/list column controls.
+    - **Fullscreen Artwork Viewer:** Tapping anime cover or banner in anime details opens artwork in fullscreen with smooth pinch-to-zoom, pan, double-tap zoom, cover/banner switching, image saving to Pictures, and direct image sharing.
+  - **My Lists & Tactile Entry Editor:** Synchronized personal AniList entries with status filters, custom sorting, search, inline `+1` episode progress badge, and a modern `ListEditSheet` with 1-tap horizontal status chips, M3 progress steppers, and star score rating.
+  - **Favourites:** Direct access to favourite anime and characters.
+  - **Notifications:** Real-time AniList notifications with category filter chips (`All`, `Airing`, `Related`, `Social`), unread badge counter, `New` indicator pills, and confirmation-protected mark-all-read.
+  - **Statistics & Status Lists:** Interactive user statistics cards, segmented status bar, drill-down status lists with search, grid/list toggle, sorting (`Title`, `Progress`, `Score`), and interactive Top Genres & Top Studios rows.
+- **Animation Studio Catalog (`StudioDetailScreen`):**
+  - Tap any studio chip on Anime Details or Top Studios row in Statistics to browse the studio's complete AniList catalog with `Animation Studio` badge, favorites count, sort chips (`Popularity`, `Newest`, `Score`), infinite pagination, and 1-tap quick add-to-library.
+- **Inline Source Match Sheet (`AniListSourceSearchSheet`) & Preferred Extensions Setting:**
+  - Tapping `+` on any AniList card, seasonal item, relation, recommendation, or detail screen opens an inline bottom sheet that searches preferred or enabled sources concurrently (`limitedParallelism(5)`), prioritizes pinned sources, adds entries to the library in 1 tap, and automatically binds AniList tracking.
+  - Configurable **Quick-add extensions** multi-select setting in `Settings → AniList` allowing selection of specific extensions from all installed extensions (with automatic fallback to all enabled extensions when none are selected).
+- **Character & Staff/Voice Actor Filmography:**
+  - **Fullscreen Artwork Dialog:** Tap character portraits or staff photos to view them in a dedicated fullscreen pinch-to-zoom viewer with smooth panning and double-tap zoom.
+  - **Direct Share Actions:** Top app bar share buttons to easily share AniList character (`https://anilist.co/character/<id>`) and staff (`https://anilist.co/staff/<id>`) URLs with external apps.
+  - **Voice Actor Prioritization & Language Badges:** Character profiles prioritize Japanese voice actors first, followed by English and international dubs, complete with clean language tags (Japanese, English, Spanish, French, German, Italian, Portuguese, Korean, Chinese).
+  - **1-Tap Quick Add-to-Library:** Filmography lists for both characters and voice actors feature a 1-tap `+` button on unadded anime to match and add directly from enabled sources.
+- **AniList Community Recommendations:**
+  - **Recommendation Agreement Metrics:** Anime detail recommendation cards display community agreement votes (`👍 X recommendations`).
+  - **Status & Score Badges:** Shows live tracking status (`WATCHING`, `COMPLETED`, `PLANNING`), format, average score badge, and a 1-tap `+` quick-add button directly on recommendation cards.
+- **Franchise Relation Matrix:**
+  - **Status & Rating Indicators:** Relation cards display user tracking status pills and average score badges.
+  - **Title Localization:** Anime titles in relation cards adhere to the user's preferred title language setting (Romaji, English, or Native).
+  - **Compact Card Layout:** High-density card layout formatted directly below title metadata.
+  - **1-Tap Quick Add-to-Library:** Relation cards for anime not yet in your library include a 1-tap `+` button to match and add across enabled extensions.
+- **Anime Details & Quick Actions:**
+  - **1-Tap Status Switcher Card:** Prominent `MyEntryHeaderCard` with direct 1-tap status switcher chips (`Watching`, `Repeating`, `Completed`, `Paused`, `Dropped`, `Planning`) for instant tracking updates with optimistic UI updates.
+  - **Pull-to-Refresh:** Pull down to refresh anime details, airing dates, themes, and tracker status.
+  - **In-App PV Trailer Player Sheet:** Anime trailers in AniList seasonal and details views play directly in a bottom sheet using an embedded YouTube player (`android-youtube-player:core:13.0.0`), without leaving the app. Includes origin verification to eliminate Error 152-4 and an automatic fallback button for publisher-restricted embeds.
+- **Video Player Features:**
+  - **Long-Press 2× Speed:** Long-press anywhere on the video player screen to instantly accelerate playback to 2× speed with subtle haptic feedback; releasing returns to the previous playback speed smoothly. Includes an on-screen animated `2× Speed` indicator pill.
+  - **Next-Episode Countdown Banner:** Auto-advance countdown banner near episode completion with a 1-tap `Play Now` button.
+- **Upcoming Anime Airing Schedule (Calendar):** Native broadcast calendar powered by AniList. Accessible via the calendar button in the Updates and Seasonal tabs:
+  - **Dual Modes:** "My shows" (tracking synchronized library anime airing dates) and "All anime" (complete broadcast schedule for the week).
+  - **Interactive Day Navigation:** Day-by-day filter chips showing anime count per day of the week plus a 1-tap `Today` jump action.
+  - **Airing Countdown & Badges:** Real-time episode number (`Ep X`) and countdown indicators ("Airing soon", "Aired", "in X hours", "in X days") alongside `In Library` badges and 1-tap `+` quick add.
+  - **Caching & Quick Refresh:** Local 6-hour caching with pull-to-refresh for fast offline and online browsing.
+- **Theme Songs (OP / ED) In-App Preview Sheet:** Integrated AnimeThemes GraphQL client with in-app `.webm` video and `.ogg` audio streaming (`ThemeSongPlayerSheet`), interactive seek bar, audio/video fallback, clipboard copy, and 1-tap YouTube search.
+- **Modern UX & Visual Identity:**
+  - **Continue Watching Card:** Quick-resume card directly at the top of the Anime Library for your latest watched episode with persistent dismissal across app restarts, plus `Resume · Ep X` / `Start · Ep X` dynamic action labels on Anime Details and episode range selector chips (`1–50`, `51–100`, etc.) for long series.
+  - **Library, Updates & Browse Ergonomics:** Active filter summary pill bar with 1-tap `Clear` in Library; inline search bar and quick filter chips (`All`, `Unwatched`, `Downloaded`, `Bookmarked`) in Updates; inline `SearchToolbar` in Sources; live Global Search progress summary pill and 1-tap `+` quick-add badges on search cards; grouped `More` tab sections with live active download / update-error badge; and confirmation dialogs on `Cancel all downloads`.
+  - **Default Alphabetical Sorting:** Library defaults to alphabetical ascending sort (A → Z).
+  - **Pure AMOLED Black:** True `#000000` dark background with crisp 1.dp container borders across cards, sheets, pills, splash screen, and navigation tabs.
+  - **Aniky Branding & About Screen:** Dedicated About screen with clean credits, fork attribution, GitHub/Issue links, and version information.
+- **Rate-Limit Resilience, Caching & Offline Sync:**
+  - **HTTP 429 Cooldown:** Centralized GraphQL query and mutation execution in `AnilistApi.execute()` to intercept HTTP 429 (Too Many Requests), extract server `Retry-After` headers, and enforce a shared cooldown window (`rateLimitResetAt`), preventing rapid requests from hammering throttled servers.
+  - **Graceful Cache Fallback:** `Anilist.getAnimeDetails()` and `getAnimeDetailsFull()` gracefully serve cached data when AniList rate limits occur. Concurrent requests for the same media ID are coalesced via single-flight `CompletableDeferred`.
+  - **Throttled Paged Operations:** Paged operations (Seasonal anime, Airing schedule, Favourites) run through the rate-limited client and shared 429 cooldown, preventing API flooding and silent page truncation.
+  - **Offline & 429 Tracking Retry Queue:** Transient online tracking failures (HTTP 429, 5xx, timeouts) in `TrackChapter` are queued into `DelayedTrackingStore` and scheduled with `DelayedTrackingUpdateJob` (up to 10 retry attempts) rather than dropped, with Double progress precision.
+  - **Robust GraphQL & Mutation Handling:** Strict GraphQL error surfacing via `AnilistGraphqlException`, proper serialization of optional null variables in `saveMediaListEntryFull` (preventing backend validation rejections), immediate cache invalidation upon entry updates and deletion, and synchronized local library `Track` records.
+- **Internal OkHttp Video Downloader & HTTP/2 Playback:**
+  - **Native OkHttp Video Download Pipeline:** Added `VideoDownloader`, `DirectDownloader`, `HlsDownloader`, `DashDownloader`, `HttpDownloader`, `DownloadJournal`, and `ProgressAggregator` using each source's `OkHttpClient` (native HTTP/2) into `downloads/<md5>` before local FFmpeg muxing.
+  - **DASH MPD Support & ProGuard Rules:** Added `io.lindstrom:mpd-parser` (`0.23`) with `stax-api` (`1.0-2`) and `stax2-api` (`4.2.2`), plus ProGuard keep rules for `io.lindstrom.mpd.**`.
+  - **Download Engine Settings (`Settings → Downloads`):** Added **Use internal downloader** (`pref_download_use_internal`, enabled by default for non-torrent downloads), **Download threads** (`1`–`64`, default `4`), and **Episode download speed limit** (`KB/s`, `0` for unlimited), backed by `HEAD` helpers, HTTP `Range` resume offsets, and Okio `Throttler` rate limiting in `core:common`.
+  - **HTTP/2 Playback & Muxing Engines:** Upgraded `mpv-lib` to `io.github.animiruorg:mpv-android-lib:0.1.16` (`libcurl` + `nghttp2` HTTP/2, `mbedtls`, FFmpeg `n9.0.2`) and `ffmpeg-kit` to `io.github.animiruorg:ffmpeg-kit-next:1.0.0`, with updated `CrashLogUtil` diagnostics.
+- **Tracker Enhancements:**
+  - **1-Tap Tracker Removal:** Visible trash can button directly on tracker headers in the tracking dialog.
+  - **Library-to-AniList Navigation:** Quick link to view comprehensive AniList details directly from tracker dialogs.
+
+### Fixed
+
+- **Player Custom Skip Button (Upstream Fixes):** Hardened the bottom-right custom skip button against upstream bugs:
+  - The custom button is always visible and no longer disappears when skip-intro or AniSkip is active.
+  - Lua scripts can no longer hide or remove the primary button via `toggle_button`.
+  - Button title falls back to the button name instead of rendering an empty/zero-width pill.
+  - Decoupled skip jump into a self-contained MPV property (`user-data/aniky/skip-seconds`) backed by persistent app preferences (`gesturePreferences.skipButtonSeconds`, default 85s).
+  - Long-pressing the skip button opens the integer picker (5..300s) to dynamically adjust jump length and persist it across sessions.
+  - Hardened the integer picker dialog so selections survive recomposition and look-and-dismiss actions never overwrite existing settings.
+  - Added migration `46.sqm` to safely update default skip button scripts while leaving hand-edited buttons alone.
+- **Tracker OAuth Authorization (Upstream Fix):** Device rotation during OAuth tracker authorization in `TrackLoginActivity` no longer triggers activity recreation state consumption or unintended logouts; implemented strict single-use PKCE state generation and verification with user-facing error notifications.
+
+### Removed
+
+- **Unused Trackers:** Removed Bangumi, Jellyfin, Kitsu, Shikimori, and Simkl trackers, keeping tracking lean and focused exclusively on AniList and MyAnimeList.
+- **Unused Settings & External Guides:** Removed unused Connections configuration screen from Settings, removed startup "What's new" prompt, and removed external getting-started links from the empty library screen.
+- **Unused CI Workflows:** Removed unnecessary GitHub Actions workflow configurations and build scripts.
+
+### Changed
+
+- **Optimized Media-First Defaults:**
+  - Library episode swipe actions (left & right) default to **Disabled** to prevent accidental triggers while scrolling.
+  - Dynamic cover-based theme coloring defaults to **Off**.
+  - History shortcut button on bottom navigation bar defaults to **Off**.
+  - Recommendations button in anime details placed into the overflow menu by default.
+  - Source website suggestions and expanded suggestions default to **Off**.
+  - Feed tab defaults to **Hidden** for a clean, distraction-free layout.
+
+### Improved
+
+- **Branding & Visual Identity:** Neon space aura launcher icon for release builds and classic green icon for debug builds.
+- **Build Optimization:** Targeted exclusively to `arm64-v8a` and `armeabi-v7a` architectures, eliminating unused ABIs and reducing APK size.
 
 ## [v0.19.7.7] - 2026-06-24
 ### Fixed

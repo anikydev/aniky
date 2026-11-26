@@ -1,5 +1,5 @@
 name: 🐞 Issue report
-description: Report an issue in Anikku
+description: Report an issue in Aniky
 labels: [bug]
 body:
   - type: textarea
@@ -47,12 +47,12 @@ body:
         You can upload the crash log file as an attachment, or paste the crash logs in plain text if needed.
 
   - type: input
-    id: anikku-version
+    id: aniky-version
     attributes:
-      label: Anikku version
-      description: You can find your Anikku version in **More → About**.
+      label: Aniky version
+      description: You can find your Aniky version in **More → About**.
       placeholder: |
-        Example: "0.2.0"
+        Example: "1.0.0"
     validations:
       required: true
 
@@ -62,7 +62,7 @@ body:
       label: Android version
       description: You can find this somewhere in your Android settings.
       placeholder: |
-        Example: "Android 11"
+        Example: "Android 14"
     validations:
       required: true
 
@@ -72,7 +72,7 @@ body:
       label: Device
       description: List your device and model.
       placeholder: |
-        Example: "Google Pixel 5"
+        Example: "Google Pixel 8"
     validations:
       required: true
 
@@ -93,13 +93,13 @@ body:
           required: true
         - label: I have written a short but informative title.
           required: true
-        - label: I have gone through the [FAQ](https://anikku-app.github.io/docs/faq/general) and [troubleshooting guide](https://anikku-app.github.io/docs/guides/troubleshooting/).
+        - label: I have read the [README](https://github.com/anikydev/aniky#readme) before opening this issue.
           required: true
-        - label: I have updated the app to **[latest version](https://github.com/komikku-app/anikku/releases/latest)**.
+        - label: I have updated the app to **[latest version](https://github.com/anikydev/aniky/releases/latest)**.
           required: true
         - label: I have filled out all of the requested information in this form, including specific version numbers.
           required: true
-        - label: I understand that **Anikku does not have or fix any extensions**, and I **will not receive help** for any issues related to sources or extensions.
+        - label: I understand that **Aniky does not host or fix any extensions**, and I **will not receive help** for issues specific to third-party sources or extensions.
           required: true
 
   - type: "textarea"
@@ -115,4 +115,4 @@ body:
         Add a :+1: [reaction] to [issues you find important].
 
         [reaction]: https://github.blog/2016-03-10-add-reactions-to-pull-requests-issues-and-comments/
-        [issues you find important]: https://github.com/komikku-app/anikku/issues?q=is%3Aissue+is%3Aopen+sort%3Areactions-%2B1-desc
+        [issues you find important]: https://github.com/anikydev/aniky/issues?q=is%3Aissue+is%3Aopen+sort%3Areactions-%2B1-desc

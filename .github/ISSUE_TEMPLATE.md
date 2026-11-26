@@ -3,11 +3,10 @@
 I acknowledge that:
 
 - I have updated:
-  - To the latest version of the app (stable is v0.3.2)
+  - To the latest version of the app (v1.0.0)
   - All extensions
-- I have gone through the FAQ (https://anikku-app.github.io/docs/faq/general) and troubleshooting guide (https://anikku-app.github.io/docs/guides/troubleshooting/)
-- If this is an issue with an official anime extension, that I should be opening an issue in https://github.com/anikku-repo/anikku-extensions
-- I have searched the existing issues and this is new ticket **NOT** a duplicate or related to another open or closed issue
+- I have read the documentation (https://github.com/anikydev/aniky#readme)
+- I have searched the existing issues and this is a new ticket **NOT** a duplicate or related to another open or closed issue
 - I will fill out the title and the information in this template
 
 Note that the issue will be automatically closed if you do not fill out the title or requested information.
@@ -17,7 +16,7 @@ Note that the issue will be automatically closed if you do not fill out the titl
 ---
 
 ## Device information
-* Anikku version: ?
+* Aniky version: ?
 * Android version: ?
 * Device: ?
 
